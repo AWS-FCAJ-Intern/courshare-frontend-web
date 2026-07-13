@@ -1,4 +1,5 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { api } from "./api";
 import {
   BookOpen, Search, Bell, User, Star, Clock, Users, Play,
   Award, TrendingUp, DollarSign, Settings, LogOut, Menu, X,
@@ -18,7 +19,7 @@ import {
 import { motion } from "motion/react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
-type Page = "home" | "catalog" | "course" | "checkout" | "player" | "student" | "instructor" | "admin" | "auth";
+type Page = "home" | "catalog" | "course" | "checkout" | "player" | "student" | "instructor" | "admin" | "auth" | "builder";
 type Role = "student" | "instructor" | "admin";
 
 interface Course {
@@ -42,74 +43,28 @@ interface Course {
   revenue?: number;
 }
 
-// ── Mock Data ──────────────────────────────────────────────────────────────────
-const COURSES: Course[] = [
-  {
-    id: "1", title: "React & TypeScript Masterclass: Build Modern Apps",
-    instructor: "Sarah Chen", instructorAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=40&h=40&fit=crop&auto=format",
+export function mapApiCourseToCourse(apiCourse: any): Course {
+  return {
+    id: apiCourse.id,
+    title: apiCourse.title,
+    instructor: "Sarah Chen",
+    instructorAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=40&h=40&fit=crop&auto=format",
     thumbnail: "https://images.unsplash.com/photo-1516116216624-53ad39282d04?w=400&h=225&fit=crop&auto=format",
-    category: "Web Development", level: "Intermediate", rating: 4.9, reviewCount: 3241, students: 18420,
-    duration: "42h 30m", price: 89.99, originalPrice: 199.99, lessons: 156, badge: "Bestseller", progress: 68, published: true, revenue: 24800,
-  },
-  {
-    id: "2", title: "Machine Learning with Python: From Zero to Expert",
-    instructor: "Dr. James Park", instructorAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&auto=format",
-    thumbnail: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=225&fit=crop&auto=format",
-    category: "Data Science", level: "Advanced", rating: 4.8, reviewCount: 2187, students: 12350,
-    duration: "56h 15m", price: 119.99, originalPrice: 249.99, lessons: 201, badge: "Bestseller", progress: 32, published: true, revenue: 19600,
-  },
-  {
-    id: "3", title: "UI/UX Design Fundamentals: Figma to Prototype",
-    instructor: "Maya Rodriguez", instructorAvatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=40&h=40&fit=crop&auto=format",
-    thumbnail: "https://images.unsplash.com/photo-1561070791-2526d30994b5?w=400&h=225&fit=crop&auto=format",
-    category: "Design", level: "Beginner", rating: 4.7, reviewCount: 1893, students: 9870,
-    duration: "28h 45m", price: 79.99, originalPrice: 169.99, lessons: 112, badge: "Hot", published: true, revenue: 11200,
-  },
-  {
-    id: "4", title: "Digital Marketing Strategy: Growth & Analytics",
-    instructor: "Alex Kim", instructorAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&auto=format",
-    thumbnail: "https://images.unsplash.com/photo-1432888622747-4eb9a8efeb07?w=400&h=225&fit=crop&auto=format",
-    category: "Marketing", level: "Intermediate", rating: 4.6, reviewCount: 1456, students: 7230,
-    duration: "22h 10m", price: 69.99, originalPrice: 149.99, lessons: 88, published: true, revenue: 8900,
-  },
-  {
-    id: "5", title: "Node.js & Express: Complete Backend Development",
-    instructor: "Marcus Johnson", instructorAvatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=40&h=40&fit=crop&auto=format",
-    thumbnail: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=400&h=225&fit=crop&auto=format",
-    category: "Web Development", level: "Intermediate", rating: 4.8, reviewCount: 2034, students: 11280,
-    duration: "38h 20m", price: 94.99, originalPrice: 199.99, lessons: 143, badge: "New", published: true, revenue: 16400,
-  },
-  {
-    id: "6", title: "AWS Cloud Practitioner: Architecture & Deployment",
-    instructor: "Priya Sharma", instructorAvatar: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=40&h=40&fit=crop&auto=format",
-    thumbnail: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=400&h=225&fit=crop&auto=format",
-    category: "Cloud Computing", level: "Advanced", rating: 4.9, reviewCount: 1678, students: 8940,
-    duration: "45h 00m", price: 99.99, originalPrice: 219.99, lessons: 178, published: false, revenue: 12100,
-  },
-  {
-    id: "7", title: "Figma Master: Advanced UI Design Techniques",
-    instructor: "Elena Torres", instructorAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=40&h=40&fit=crop&auto=format",
-    thumbnail: "https://images.unsplash.com/photo-1587440871875-191322ee64b0?w=400&h=225&fit=crop&auto=format",
-    category: "Design", level: "Intermediate", rating: 4.7, reviewCount: 1234, students: 6720,
-    duration: "24h 30m", price: 74.99, originalPrice: 159.99, lessons: 96, published: true, revenue: 7800,
-  },
-  {
-    id: "8", title: "Python for Data Analysis: Pandas & Visualization",
-    instructor: "Dr. James Park", instructorAvatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&auto=format",
-    thumbnail: "https://images.unsplash.com/photo-1504868584819-f8e8b4b6d7e3?w=400&h=225&fit=crop&auto=format",
-    category: "Data Science", level: "Beginner", rating: 4.8, reviewCount: 2891, students: 15640,
-    duration: "32h 45m", price: 84.99, originalPrice: 179.99, lessons: 124, badge: "Bestseller", published: true, revenue: 18700,
-  },
-];
+    category: apiCourse.categoryName || "Web Development",
+    level: "Intermediate",
+    rating: 4.8,
+    reviewCount: 156,
+    students: 1250,
+    duration: "12h 30m",
+    price: apiCourse.price || 89.99,
+    originalPrice: apiCourse.price ? Number((apiCourse.price * 1.5).toFixed(2)) : 199.99,
+    lessons: 10,
+    published: apiCourse.published,
+  };
+}
 
-const CATEGORIES = [
-  { name: "Web Development", icon: Globe, count: 342, color: "bg-indigo-500", light: "bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400" },
-  { name: "Data Science", icon: BarChart2, count: 218, color: "bg-violet-500", light: "bg-violet-50 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400" },
-  { name: "Design", icon: Layers, count: 195, color: "bg-pink-500", light: "bg-pink-50 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400" },
-  { name: "Business", icon: TrendingUp, count: 167, color: "bg-emerald-500", light: "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400" },
-  { name: "Marketing", icon: Target, count: 143, color: "bg-amber-500", light: "bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400" },
-  { name: "Cloud Computing", icon: Zap, count: 128, color: "bg-cyan-500", light: "bg-cyan-50 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-400" },
-];
+let COURSES: Course[] = [];
+let CATEGORIES: any[] = [];
 
 const REVENUE_DATA = [
   { month: "Jan", revenue: 12400, students: 142 }, { month: "Feb", revenue: 15600, students: 178 },
@@ -240,10 +195,13 @@ function StatCard({ icon: Icon, label, value, sub, color = "text-primary", bg = 
   );
 }
 
-function CourseCard({ course, onNavigate }: { course: Course; onNavigate: (p: Page) => void }) {
+function CourseCard({ course, onNavigate, onSelectCourse }: { course: Course; onNavigate: (p: Page) => void; onSelectCourse?: (id: string) => void }) {
   return (
     <div
-      onClick={() => onNavigate("course")}
+      onClick={() => {
+        if (onSelectCourse) onSelectCourse(course.id);
+        onNavigate("course");
+      }}
       className="bg-card border border-border rounded-xl overflow-hidden hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group"
     >
       <div className="relative overflow-hidden bg-muted">
@@ -414,7 +372,41 @@ function Navbar({ page, onNavigate, dark, onDark, role, isLoggedIn, onLogout }: 
 }
 
 // ── Home Page ──────────────────────────────────────────────────────────────────
-function HomePage({ onNavigate }: { onNavigate: (p: Page) => void }) {
+const CATEGORY_STYLES: Record<string, { icon: any; color: string; light: string }> = {
+  "Web Development": { icon: Globe, color: "bg-indigo-500", light: "bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400" },
+  "Data Science": { icon: BarChart2, color: "bg-violet-500", light: "bg-violet-50 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400" },
+  "Design": { icon: Layers, color: "bg-pink-500", light: "bg-pink-50 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400" },
+  "Business": { icon: TrendingUp, color: "bg-emerald-500", light: "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400" },
+  "Marketing": { icon: Target, color: "bg-amber-500", light: "bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400" },
+  "Cloud Computing": { icon: Zap, color: "bg-cyan-500", light: "bg-cyan-50 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-400" },
+};
+
+function getCategoryStyle(name: string) {
+  return CATEGORY_STYLES[name] || { icon: Globe, color: "bg-indigo-500", light: "bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400" };
+}
+
+function HomePage({ onNavigate, onSelectCourse }: { onNavigate: (p: Page) => void; onSelectCourse?: (id: string) => void }) {
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+
+  useEffect(() => {
+    api.getCourses().then(data => setCourses(data.map(mapApiCourseToCourse))).catch(console.error);
+    api.getCategories().then(data => {
+      const mapped = data.map(c => {
+        const style = getCategoryStyle(c.name);
+        return {
+          id: c.id,
+          name: c.name,
+          icon: style.icon,
+          count: 10,
+          color: style.color,
+          light: style.light,
+        };
+      });
+      setCategories(mapped);
+    }).catch(console.error);
+  }, []);
+
   return (
     <div className="min-h-screen">
       {/* Hero */}
@@ -483,8 +475,8 @@ function HomePage({ onNavigate }: { onNavigate: (p: Page) => void }) {
           <button onClick={() => onNavigate("catalog")} className="flex items-center gap-1 text-sm text-primary hover:underline">View all <ChevronRight className="w-4 h-4" /></button>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {CATEGORIES.map(cat => (
-            <button key={cat.name} onClick={() => onNavigate("catalog")} className="bg-card border border-border rounded-xl p-5 hover:border-primary/50 hover:shadow-md transition-all group text-left">
+          {categories.map(cat => (
+            <button key={cat.id || cat.name} onClick={() => onNavigate("catalog")} className="bg-card border border-border rounded-xl p-5 hover:border-primary/50 hover:shadow-md transition-all group text-left">
               <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center mb-3 transition-transform group-hover:scale-110", cat.light)}>
                 <cat.icon className="w-5 h-5" />
               </div>
@@ -506,7 +498,7 @@ function HomePage({ onNavigate }: { onNavigate: (p: Page) => void }) {
             <button onClick={() => onNavigate("catalog")} className="flex items-center gap-1 text-sm text-primary hover:underline">Browse all <ChevronRight className="w-4 h-4" /></button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {COURSES.slice(0, 4).map(c => <CourseCard key={c.id} course={c} onNavigate={onNavigate} />)}
+            {courses.slice(0, 4).map(c => <CourseCard key={c.id} course={c} onNavigate={onNavigate} onSelectCourse={onSelectCourse} />)}
           </div>
         </div>
       </section>
@@ -592,20 +584,32 @@ function HomePage({ onNavigate }: { onNavigate: (p: Page) => void }) {
 }
 
 // ── Course Catalog ─────────────────────────────────────────────────────────────
-function CourseCatalogPage({ onNavigate }: { onNavigate: (p: Page) => void }) {
+function CourseCatalogPage({ onNavigate, onSelectCourse }: { onNavigate: (p: Page) => void; onSelectCourse?: (id: string) => void }) {
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [selectedCat, setSelectedCat] = useState("All");
   const [selectedLevel, setSelectedLevel] = useState("All");
   const [sortBy, setSortBy] = useState("Popular");
   const [view, setView] = useState<"grid" | "list">("grid");
   const [priceRange, setPriceRange] = useState("All");
 
+  useEffect(() => {
+    api.getCategories().then(setCategories).catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    const matchedCat = categories.find(c => c.name === selectedCat);
+    api.getCourses({ categoryId: matchedCat?.id }).then(data => {
+      setCourses(data.map(mapApiCourseToCourse));
+    }).catch(console.error);
+  }, [selectedCat, categories]);
+
   const levels = ["All", "Beginner", "Intermediate", "Advanced"];
   const sorts = ["Popular", "Newest", "Highest Rated", "Price: Low–High"];
   const prices = ["All", "Free", "Under $50", "$50–$100", "Over $100"];
-  const cats = ["All", ...CATEGORIES.map(c => c.name)];
+  const cats = ["All", ...categories.map(c => c.name)];
 
-  const filtered = COURSES.filter(c => {
-    if (selectedCat !== "All" && c.category !== selectedCat) return false;
+  const filtered = courses.filter(c => {
     if (selectedLevel !== "All" && c.level !== selectedLevel) return false;
     return true;
   });
@@ -615,7 +619,7 @@ function CourseCatalogPage({ onNavigate }: { onNavigate: (p: Page) => void }) {
       <div className="bg-card border-b border-border py-8 px-4">
         <div className="max-w-7xl mx-auto">
           <h1 className="text-3xl font-bold font-display mb-2">Course Catalog</h1>
-          <p className="text-muted-foreground">Explore {COURSES.length * 12}+ courses across all topics</p>
+          <p className="text-muted-foreground">Explore {courses.length * 12}+ courses across all topics</p>
         </div>
       </div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
@@ -698,12 +702,12 @@ function CourseCatalogPage({ onNavigate }: { onNavigate: (p: Page) => void }) {
             </div>
             {view === "grid" ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-                {filtered.map(c => <CourseCard key={c.id} course={c} onNavigate={onNavigate} />)}
+                {filtered.map(c => <CourseCard key={c.id} course={c} onNavigate={onNavigate} onSelectCourse={onSelectCourse} />)}
               </div>
             ) : (
               <div className="space-y-3">
                 {filtered.map(c => (
-                  <div key={c.id} onClick={() => onNavigate("course")} className="bg-card border border-border rounded-xl p-4 flex gap-4 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer group">
+                  <div key={c.id} onClick={() => { if (onSelectCourse) onSelectCourse(c.id); onNavigate("course"); }} className="bg-card border border-border rounded-xl p-4 flex gap-4 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer group">
                     <div className="relative w-40 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-muted">
                       <img src={c.thumbnail} alt={c.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                     </div>
@@ -744,10 +748,36 @@ function CourseCatalogPage({ onNavigate }: { onNavigate: (p: Page) => void }) {
 }
 
 // ── Course Detail ──────────────────────────────────────────────────────────────
-function CourseDetailPage({ onNavigate }: { onNavigate: (p: Page) => void }) {
-  const course = COURSES[0];
+function CourseDetailPage({ onNavigate, courseId }: { onNavigate: (p: Page) => void; courseId?: string }) {
+  const [course, setCourse] = useState<Course | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [openSection, setOpenSection] = useState(0);
+
+  useEffect(() => {
+    if (courseId) {
+      api.getCourseDetail(courseId)
+        .then(data => setCourse(mapApiCourseToCourse(data)))
+        .catch(console.error);
+    } else {
+      // Fallback to first course if no courseId is provided
+      api.getCourses().then(data => {
+        if (data.length > 0) {
+          setCourse(mapApiCourseToCourse(data[0]));
+        }
+      }).catch(console.error);
+    }
+  }, [courseId]);
+
+  if (!course) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading course details...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen">
@@ -969,10 +999,35 @@ function CourseDetailPage({ onNavigate }: { onNavigate: (p: Page) => void }) {
 }
 
 // ── Checkout ───────────────────────────────────────────────────────────────────
-function CheckoutPage({ onNavigate }: { onNavigate: (p: Page) => void }) {
-  const course = COURSES[0];
+function CheckoutPage({ onNavigate, courseId }: { onNavigate: (p: Page) => void; courseId?: string }) {
+  const [course, setCourse] = useState<Course | null>(null);
   const [step, setStep] = useState(1);
   const [coupon, setCoupon] = useState("");
+
+  useEffect(() => {
+    if (courseId) {
+      api.getCourseDetail(courseId)
+        .then(data => setCourse(mapApiCourseToCourse(data)))
+        .catch(console.error);
+    } else {
+      api.getCourses().then(data => {
+        if (data.length > 0) {
+          setCourse(mapApiCourseToCourse(data[0]));
+        }
+      }).catch(console.error);
+    }
+  }, [courseId]);
+
+  if (!course) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading checkout...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (step === 3) {
     return (
@@ -1123,11 +1178,34 @@ function CheckoutPage({ onNavigate }: { onNavigate: (p: Page) => void }) {
 }
 
 // ── Learning Player ────────────────────────────────────────────────────────────
-function LearningPlayerPage({ onNavigate }: { onNavigate: (p: Page) => void }) {
+function LearningPlayerPage({ onNavigate, courseId }: { onNavigate: (p: Page) => void; courseId?: string }) {
+  const [course, setCourse] = useState<Course | null>(null);
   const [activeLesson, setActiveLesson] = useState({ s: 1, l: 0 });
   const [activeTab, setActiveTab] = useState("overview");
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const course = COURSES[0];
+
+  useEffect(() => {
+    if (courseId) {
+      api.getCourseDetail(courseId)
+        .then(data => setCourse(mapApiCourseToCourse(data)))
+        .catch(console.error);
+    } else {
+      api.getCourses().then(data => {
+        if (data.length > 0) {
+          setCourse(mapApiCourseToCourse(data[0]));
+        }
+      }).catch(console.error);
+    }
+  }, [courseId]);
+
+  if (!course) {
+    return (
+      <div className="min-h-screen flex flex-col bg-gray-900 text-white items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+        <p className="text-gray-450">Loading player...</p>
+      </div>
+    );
+  }
 
   const currentLesson = LESSON_LIST[activeLesson.s]?.lessons[activeLesson.l];
   const totalDone = LESSON_LIST.flatMap(s => s.lessons).filter(l => l.done).length;
@@ -1420,9 +1498,50 @@ function StudentDashboardPage({ onNavigate }: { onNavigate: (p: Page) => void })
 }
 
 // ── Instructor Portal ──────────────────────────────────────────────────────────
-function InstructorPortalPage({ onNavigate }: { onNavigate: (p: Page) => void }) {
+function InstructorPortalPage({ onNavigate, onSelectCourse }: { onNavigate: (p: Page) => void; onSelectCourse?: (id: string) => void }) {
   const [activeTab, setActiveTab] = useState("courses");
-  const myCourses = COURSES.slice(0, 4);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [price, setPrice] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const fetchCourses = () => {
+    api.getCourses().then(data => {
+      setCourses(data.map(mapApiCourseToCourse));
+    }).catch(console.error);
+  };
+
+  useEffect(() => {
+    fetchCourses();
+    api.getCategories().then(setCategories).catch(console.error);
+  }, []);
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const newCourse = await api.createCourse(title, description, categoryId || null, parseFloat(price) || 0);
+      setIsModalOpen(false);
+      setTitle("");
+      setDescription("");
+      setCategoryId("");
+      setPrice("");
+      if (onSelectCourse) {
+        onSelectCourse(newCourse.id);
+      }
+      onNavigate("builder");
+    } catch (err: any) {
+      alert(err.message || "Failed to create course");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const myCourses = courses.length > 0 ? courses : COURSES.slice(0, 4);
 
   return (
     <div className="min-h-screen">
@@ -1432,7 +1551,7 @@ function InstructorPortalPage({ onNavigate }: { onNavigate: (p: Page) => void })
             <h1 className="text-2xl font-bold font-display mb-1">Instructor Dashboard</h1>
             <p className="text-muted-foreground text-sm">Welcome back, Sarah. Your courses are performing great!</p>
           </div>
-          <button className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white text-sm font-medium rounded-xl hover:bg-primary/90 transition-colors">
+          <button onClick={() => setIsModalOpen(false) || setIsModalOpen(true)} className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white text-sm font-medium rounded-xl hover:bg-primary/90 transition-colors">
             <PlusCircle className="w-4 h-4" /> New Course
           </button>
         </div>
@@ -1509,8 +1628,12 @@ function InstructorPortalPage({ onNavigate }: { onNavigate: (p: Page) => void })
                         <td className="px-4 py-3 text-right"><Badge variant={c.published ? "success" : "warning"}>{c.published ? "Published" : "Draft"}</Badge></td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-1">
-                            <button className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"><Edit className="w-3.5 h-3.5" /></button>
-                            <button className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"><MoreHorizontal className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => { if (onSelectCourse) onSelectCourse(c.id); onNavigate("builder"); }} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title="Course Builder"><Edit className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => {
+                              if (confirm("Are you sure you want to delete this course?")) {
+                                api.deleteCourse(c.id).then(() => fetchCourses()).catch(err => alert(err.message || "Failed to delete"));
+                              }
+                            }} className="p-1.5 rounded-lg hover:bg-muted text-rose-500 transition-colors" title="Delete Course"><Trash2 className="w-3.5 h-3.5" /></button>
                           </div>
                         </td>
                       </tr>
@@ -1587,6 +1710,259 @@ function InstructorPortalPage({ onNavigate }: { onNavigate: (p: Page) => void })
                 ))}
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {isModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-card border border-border rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden text-foreground">
+            <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-muted/30">
+              <h3 className="font-bold text-lg font-display">Create New Course</h3>
+              <button onClick={() => setIsModalOpen(false)} className="text-muted-foreground hover:text-foreground text-xl">✕</button>
+            </div>
+            <form onSubmit={handleCreate} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Course Title</label>
+                <input value={title} onChange={e => setTitle(e.target.value)} required className="w-full px-3.5 py-2.5 border border-border rounded-xl bg-input-background text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary focus:outline-none transition-all" placeholder="e.g. Advanced Spring Boot Development" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Description</label>
+                <textarea value={description} onChange={e => setDescription(e.target.value)} required rows={4} className="w-full px-3.5 py-2.5 border border-border rounded-xl bg-input-background text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary focus:outline-none transition-all resize-none" placeholder="Enter course description details..." />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Category</label>
+                  <select value={categoryId} onChange={e => setCategoryId(e.target.value)} required className="w-full px-3.5 py-2.5 border border-border rounded-xl bg-input-background text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary focus:outline-none transition-all">
+                    <option value="">Select Category</option>
+                    {categories.map(cat => (
+                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Price ($)</label>
+                  <input type="number" step="0.01" value={price} onChange={e => setPrice(e.target.value)} required className="w-full px-3.5 py-2.5 border border-border rounded-xl bg-input-background text-sm focus:ring-2 focus:ring-primary/30 focus:border-primary focus:outline-none transition-all" placeholder="99.99" />
+                </div>
+              </div>
+              <div className="pt-4 flex justify-end gap-3 border-t border-border">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2.5 border border-border rounded-xl text-sm font-medium hover:bg-muted transition-colors">Cancel</button>
+                <button type="submit" disabled={loading} className="px-5 py-2.5 bg-primary text-white rounded-xl text-sm font-semibold hover:bg-primary/90 disabled:opacity-55 transition-colors">
+                  {loading ? "Creating..." : "Create Course"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ── Course Builder ─────────────────────────────────────────────────────────────
+function CourseBuilderPage({ onNavigate, courseId }: { onNavigate: (p: Page) => void; courseId: string }) {
+  const [course, setCourse] = useState<any | null>(null);
+  const [sectionTitle, setSectionTitle] = useState("");
+  const [addingSection, setAddingSection] = useState(false);
+  const [activeSectionIdForLesson, setActiveSectionIdForLesson] = useState<string | null>(null);
+  const [lessonTitle, setLessonTitle] = useState("");
+  const [lessonDesc, setLessonDesc] = useState("");
+  const [lessonVideo, setLessonVideo] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const fetchCourseDetails = () => {
+    if (!courseId) return;
+    api.getCourseDetail(courseId)
+      .then(setCourse)
+      .catch(console.error);
+  };
+
+  useEffect(() => {
+    fetchCourseDetails();
+  }, [courseId]);
+
+  const handleAddSection = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!sectionTitle.trim()) return;
+    setLoading(true);
+    try {
+      const orderIndex = (course?.sections?.length || 0) + 1;
+      await api.createSection(courseId, sectionTitle, orderIndex);
+      setSectionTitle("");
+      setAddingSection(false);
+      fetchCourseDetails();
+    } catch (err: any) {
+      alert(err.message || "Failed to add section");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteSection = async (sectionId: string) => {
+    if (!confirm("Are you sure you want to delete this section?")) return;
+    try {
+      await api.deleteSection(courseId, sectionId);
+      fetchCourseDetails();
+    } catch (err: any) {
+      alert(err.message || "Failed to delete section");
+    }
+  };
+
+  const handleAddLesson = async (e: React.FormEvent, sectionId: string) => {
+    e.preventDefault();
+    if (!lessonTitle.trim()) return;
+    setLoading(true);
+    try {
+      const section = course?.sections?.find((s: any) => s.id === sectionId);
+      const orderIndex = (section?.lessons?.length || 0) + 1;
+      await api.createLesson(courseId, sectionId, lessonTitle, lessonDesc, lessonVideo, orderIndex);
+      setLessonTitle("");
+      setLessonDesc("");
+      setLessonVideo("");
+      setActiveSectionIdForLesson(null);
+      fetchCourseDetails();
+    } catch (err: any) {
+      alert(err.message || "Failed to add lesson");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteLesson = async (sectionId: string, lessonId: string) => {
+    if (!confirm("Are you sure you want to delete this lesson?")) return;
+    try {
+      await api.deleteLesson(courseId, sectionId, lessonId);
+      fetchCourseDetails();
+    } catch (err: any) {
+      alert(err.message || "Failed to delete lesson");
+    }
+  };
+
+  if (!course) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading course builder...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen py-8 px-4 text-foreground bg-background">
+      <div className="max-w-4xl mx-auto space-y-6">
+        {/* Back and Header */}
+        <div className="flex items-center justify-between pb-4 border-b border-border">
+          <button onClick={() => onNavigate("instructor")} className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+            <ChevronLeft className="w-4 h-4" /> Back to Dashboard
+          </button>
+          <span className="text-xs bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 font-semibold px-2.5 py-0.5 rounded-full">
+            {course.published ? "Published" : "Draft"}
+          </span>
+        </div>
+
+        {/* Course Header Summary */}
+        <div className="bg-card border border-border rounded-2xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold font-display">{course.title}</h1>
+            <p className="text-muted-foreground text-sm mt-1">{course.description || "No description provided."}</p>
+            <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
+              <span>Price: <strong>${course.price}</strong></span>
+              <span>Category: <strong>{course.categoryName || "Unassigned"}</strong></span>
+            </div>
+          </div>
+        </div>
+
+        {/* Builder Content */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold font-display">Course Curriculum</h2>
+            {!addingSection && (
+              <button onClick={() => setAddingSection(true)} className="flex items-center gap-1.5 text-xs font-semibold bg-primary text-white px-3.5 py-2 rounded-xl hover:bg-primary/90 transition-colors shadow-sm">
+                <PlusCircle className="w-3.5 h-3.5" /> Add Section
+              </button>
+            )}
+          </div>
+
+          {/* Add Section Form */}
+          {addingSection && (
+            <motion.form initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} onSubmit={handleAddSection} className="bg-card border-2 border-dashed border-border rounded-2xl p-5 space-y-3">
+              <h3 className="text-sm font-bold">New Section</h3>
+              <input value={sectionTitle} onChange={e => setSectionTitle(e.target.value)} required placeholder="Section title (e.g. Getting Started)" className="w-full px-3.5 py-2 border border-border rounded-xl text-sm bg-input-background focus:outline-none focus:ring-2 focus:ring-primary/20" />
+              <div className="flex justify-end gap-2 text-xs">
+                <button type="button" onClick={() => setAddingSection(false)} className="px-3 py-1.5 border border-border rounded-lg hover:bg-muted transition-colors">Cancel</button>
+                <button type="submit" disabled={loading} className="px-3.5 py-1.5 bg-primary text-white font-semibold rounded-lg hover:bg-primary/90 transition-colors">{loading ? "Adding..." : "Add"}</button>
+              </div>
+            </motion.form>
+          )}
+
+          {/* Sections List */}
+          <div className="space-y-4">
+            {course.sections && course.sections.length > 0 ? (
+              course.sections.map((sect: any, sIdx: number) => (
+                <div key={sect.id} className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+                  {/* Section Header */}
+                  <div className="px-5 py-4 bg-muted/30 border-b border-border flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs bg-primary/10 text-primary font-bold px-2 py-0.5 rounded-md">Section {sIdx + 1}</span>
+                      <h3 className="font-bold text-sm font-display">{sect.title}</h3>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => setActiveSectionIdForLesson(sect.id)} className="text-xs font-medium text-primary hover:underline flex items-center gap-1">
+                        <PlusCircle className="w-3 h-3" /> Add Lesson
+                      </button>
+                      <button onClick={() => handleDeleteSection(sect.id)} className="p-1 rounded text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Lessons list in section */}
+                  <div className="p-5 space-y-3">
+                    {sect.lessons && sect.lessons.length > 0 ? (
+                      sect.lessons.map((less: any, lIdx: number) => (
+                        <div key={less.id} className="flex items-center justify-between p-3 border border-border rounded-xl bg-muted/10 hover:bg-muted/20 transition-colors">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <Video className="w-4 h-4 text-primary flex-shrink-0" />
+                            <div className="min-w-0">
+                              <h4 className="text-xs font-semibold font-display truncate">{less.title}</h4>
+                              <p className="text-[10px] text-muted-foreground truncate">{less.description || "No description"}</p>
+                            </div>
+                          </div>
+                          <button onClick={() => handleDeleteLesson(sect.id, less.id)} className="p-1 text-muted-foreground hover:text-rose-500 transition-colors flex-shrink-0">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-muted-foreground italic text-center py-2">No lessons added to this section yet.</p>
+                    )}
+
+                    {/* Add Lesson Form */}
+                    {activeSectionIdForLesson === sect.id && (
+                      <motion.form initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} onSubmit={(e) => handleAddLesson(e, sect.id)} className="border border-border rounded-xl p-4 bg-muted/20 space-y-3 mt-3">
+                        <h4 className="text-xs font-bold">New Lesson</h4>
+                        <input value={lessonTitle} onChange={e => setLessonTitle(e.target.value)} required placeholder="Lesson title (e.g. Introduction to components)" className="w-full px-3 py-1.5 border border-border rounded-lg text-xs bg-input-background focus:outline-none" />
+                        <input value={lessonDesc} onChange={e => setLessonDesc(e.target.value)} placeholder="Short description (optional)" className="w-full px-3 py-1.5 border border-border rounded-lg text-xs bg-input-background focus:outline-none" />
+                        <input value={lessonVideo} onChange={e => setLessonVideo(e.target.value)} placeholder="Video URL (e.g. https://youtube.com/...)" className="w-full px-3 py-1.5 border border-border rounded-lg text-xs bg-input-background focus:outline-none" />
+                        <div className="flex justify-end gap-2 text-[10px]">
+                          <button type="button" onClick={() => setActiveSectionIdForLesson(null)} className="px-2.5 py-1 border border-border rounded-md hover:bg-muted transition-colors">Cancel</button>
+                          <button type="submit" disabled={loading} className="px-3 py-1 bg-primary text-white font-semibold rounded-md hover:bg-primary/90 transition-colors">{loading ? "Adding..." : "Add"}</button>
+                        </div>
+                      </motion.form>
+                    )}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="border border-dashed border-border rounded-2xl p-8 text-center text-muted-foreground">
+                <LayoutDashboard className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                <p className="text-sm font-medium">No sections added yet.</p>
+                <p className="text-xs opacity-80 mt-1">Start building your curriculum by adding your first section above.</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -1871,10 +2247,26 @@ function AuthPage({ onNavigate, onLogin }: { onNavigate: (p: Page) => void; onLo
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onLogin(selectedRole);
-    onNavigate(selectedRole === "student" ? "student" : selectedRole === "instructor" ? "instructor" : "admin");
+    try {
+      if (mode === "login") {
+        await api.login(email, password);
+      } else {
+        await api.register(email, password, name);
+      }
+      const profile = await api.getProfile();
+      let matchedRole: Role = "student";
+      if (profile.roles.includes("ADMIN") || profile.roles.includes("ROLE_ADMIN")) {
+        matchedRole = "admin";
+      } else if (profile.roles.includes("INSTRUCTOR") || profile.roles.includes("ROLE_INSTRUCTOR")) {
+        matchedRole = "instructor";
+      }
+      onLogin(matchedRole);
+      onNavigate(matchedRole);
+    } catch (err: any) {
+      alert(err.message || "Authentication failed");
+    }
   };
 
   return (
@@ -2023,7 +2415,24 @@ export default function App() {
   const [page, setPage] = useState<Page>("home");
   const [dark, setDark] = useState(false);
   const [role, setRole] = useState<Role>("student");
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem("accessToken"));
+  const [selectedCourseId, setSelectedCourseId] = useState<string>("");
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      api.getProfile().then(profile => {
+        let matchedRole: Role = "student";
+        if (profile.roles.includes("ADMIN") || profile.roles.includes("ROLE_ADMIN")) {
+          matchedRole = "admin";
+        } else if (profile.roles.includes("INSTRUCTOR") || profile.roles.includes("ROLE_INSTRUCTOR")) {
+          matchedRole = "instructor";
+        }
+        setRole(matchedRole);
+      }).catch(() => {
+        handleLogout();
+      });
+    }
+  }, [isLoggedIn]);
 
   const navigate = (p: Page) => {
     setPage(p);
@@ -2036,6 +2445,7 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    api.logout();
     setIsLoggedIn(false);
     navigate("home");
   };
@@ -2051,13 +2461,14 @@ export default function App() {
       )}
 
       <motion.div key={page} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
-        {page === "home" && <HomePage onNavigate={navigate} />}
-        {page === "catalog" && <CourseCatalogPage onNavigate={navigate} />}
-        {page === "course" && <CourseDetailPage onNavigate={navigate} />}
-        {page === "checkout" && <CheckoutPage onNavigate={navigate} />}
-        {page === "player" && <LearningPlayerPage onNavigate={navigate} />}
+        {page === "home" && <HomePage onNavigate={navigate} onSelectCourse={setSelectedCourseId} />}
+        {page === "catalog" && <CourseCatalogPage onNavigate={navigate} onSelectCourse={setSelectedCourseId} />}
+        {page === "course" && <CourseDetailPage onNavigate={navigate} courseId={selectedCourseId} />}
+        {page === "checkout" && <CheckoutPage onNavigate={navigate} courseId={selectedCourseId} />}
+        {page === "player" && <LearningPlayerPage onNavigate={navigate} courseId={selectedCourseId} />}
         {page === "student" && <StudentDashboardPage onNavigate={navigate} />}
-        {page === "instructor" && <InstructorPortalPage onNavigate={navigate} />}
+        {page === "instructor" && <InstructorPortalPage onNavigate={navigate} onSelectCourse={setSelectedCourseId} />}
+        {page === "builder" && <CourseBuilderPage onNavigate={navigate} courseId={selectedCourseId} />}
         {page === "admin" && <AdminDashboardPage />}
         {page === "auth" && <AuthPage onNavigate={navigate} onLogin={handleLogin} />}
       </motion.div>
