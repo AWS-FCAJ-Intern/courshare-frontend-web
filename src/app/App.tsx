@@ -41,6 +41,7 @@ interface Course {
   progress?: number;
   published?: boolean;
   revenue?: number;
+  sections?: any[];
 }
 
 export function mapApiCourseToCourse(apiCourse: any): Course {
@@ -58,8 +59,9 @@ export function mapApiCourseToCourse(apiCourse: any): Course {
     duration: "12h 30m",
     price: apiCourse.price || 89.99,
     originalPrice: apiCourse.price ? Number((apiCourse.price * 1.5).toFixed(2)) : 199.99,
-    lessons: 10,
+    lessons: apiCourse.sections ? apiCourse.sections.flatMap((s: any) => s.lessons || []).length : 10,
     published: apiCourse.published,
+    sections: apiCourse.sections,
   };
 }
 
@@ -905,11 +907,11 @@ function CourseDetailPage({ onNavigate, courseId }: { onNavigate: (p: Page) => v
           {activeTab === "curriculum" && (
             <div>
               <div className="flex items-center justify-between mb-4">
-                <span className="text-sm text-muted-foreground">{CURRICULUM.length} sections • {course.lessons} lessons • {course.duration} total</span>
+                <span className="text-sm text-muted-foreground">{(course.sections || CURRICULUM).length} sections • {course.lessons} lessons • {course.duration} total</span>
                 <button className="text-sm text-primary hover:underline">Expand all</button>
               </div>
               <div className="space-y-2">
-                {CURRICULUM.map((sec, si) => (
+                {(course.sections || CURRICULUM).map((sec: any, si: number) => (
                   <div key={si} className="border border-border rounded-xl overflow-hidden">
                     <button onClick={() => setOpenSection(openSection === si ? -1 : si)}
                       className="flex items-center justify-between w-full px-4 py-4 hover:bg-muted transition-colors text-left">
@@ -917,16 +919,16 @@ function CourseDetailPage({ onNavigate, courseId }: { onNavigate: (p: Page) => v
                         {openSection === si ? <ChevronUp className="w-4 h-4 text-primary" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                         <span className="font-medium text-sm">{sec.title}</span>
                       </div>
-                      <span className="text-xs text-muted-foreground">{sec.lessons.length} lessons</span>
+                      <span className="text-xs text-muted-foreground">{(sec.lessons || []).length} lessons</span>
                     </button>
                     {openSection === si && (
                       <div className="border-t border-border">
-                        {sec.lessons.map((l, li) => (
+                        {(sec.lessons || []).map((l: any, li: number) => (
                           <div key={li} className="flex items-center gap-3 px-4 py-3 hover:bg-muted transition-colors border-b last:border-0 border-border">
-                            {l.free ? <PlayCircle className="w-4 h-4 text-primary flex-shrink-0" /> : <Lock className="w-4 h-4 text-muted-foreground flex-shrink-0" />}
+                            {l.free || !l.id ? <PlayCircle className="w-4 h-4 text-primary flex-shrink-0" /> : <Lock className="w-4 h-4 text-muted-foreground flex-shrink-0" />}
                             <span className="flex-1 text-sm">{l.title}</span>
-                            {l.free && <span className="text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full">Preview</span>}
-                            <span className="text-xs text-muted-foreground">{l.dur}</span>
+                            {(l.free || !l.id) && <span className="text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full">Preview</span>}
+                            <span className="text-xs text-muted-foreground">{l.dur || "10:00"}</span>
                           </div>
                         ))}
                       </div>
@@ -1136,7 +1138,15 @@ function CheckoutPage({ onNavigate, courseId }: { onNavigate: (p: Page) => void;
                 </div>
                 <div className="flex gap-3">
                   <button onClick={() => setStep(1)} className="px-5 py-3 border border-border rounded-xl font-medium hover:bg-muted transition-colors text-sm">Back</button>
-                  <button onClick={() => setStep(3)} className="flex-1 py-3.5 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-colors flex items-center justify-center gap-2">
+                  <button onClick={() => {
+                    const stored = localStorage.getItem("enrolledCourses");
+                    const enrolled = stored ? JSON.parse(stored) : [];
+                    if (!enrolled.includes(course.id)) {
+                      enrolled.push(course.id);
+                      localStorage.setItem("enrolledCourses", JSON.stringify(enrolled));
+                    }
+                    setStep(3);
+                  }} className="flex-1 py-3.5 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-colors flex items-center justify-center gap-2">
                     <Lock className="w-4 h-4" /> Complete Purchase — ${course.price}
                   </button>
                 </div>
@@ -1180,7 +1190,7 @@ function CheckoutPage({ onNavigate, courseId }: { onNavigate: (p: Page) => void;
 // ── Learning Player ────────────────────────────────────────────────────────────
 function LearningPlayerPage({ onNavigate, courseId }: { onNavigate: (p: Page) => void; courseId?: string }) {
   const [course, setCourse] = useState<Course | null>(null);
-  const [activeLesson, setActiveLesson] = useState({ s: 1, l: 0 });
+  const [activeLesson, setActiveLesson] = useState({ s: 0, l: 0 });
   const [activeTab, setActiveTab] = useState("overview");
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
@@ -1198,6 +1208,15 @@ function LearningPlayerPage({ onNavigate, courseId }: { onNavigate: (p: Page) =>
     }
   }, [courseId]);
 
+  useEffect(() => {
+    if (course && course.sections && course.sections.length > 0) {
+      const firstSectionWithLessons = course.sections.findIndex((s: any) => s.lessons && s.lessons.length > 0);
+      if (firstSectionWithLessons !== -1) {
+        setActiveLesson({ s: firstSectionWithLessons, l: 0 });
+      }
+    }
+  }, [course]);
+
   if (!course) {
     return (
       <div className="min-h-screen flex flex-col bg-gray-900 text-white items-center justify-center">
@@ -1207,9 +1226,10 @@ function LearningPlayerPage({ onNavigate, courseId }: { onNavigate: (p: Page) =>
     );
   }
 
-  const currentLesson = LESSON_LIST[activeLesson.s]?.lessons[activeLesson.l];
-  const totalDone = LESSON_LIST.flatMap(s => s.lessons).filter(l => l.done).length;
-  const totalLessons = LESSON_LIST.flatMap(s => s.lessons).length;
+  const playerSections = course.sections && course.sections.length > 0 ? course.sections : LESSON_LIST;
+  const currentLesson = playerSections[activeLesson.s]?.lessons?.[activeLesson.l];
+  const totalDone = playerSections.flatMap((s: any) => s.lessons || []).filter((l: any) => l.done).length;
+  const totalLessons = playerSections.flatMap((s: any) => s.lessons || []).length;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -1249,7 +1269,7 @@ function LearningPlayerPage({ onNavigate, courseId }: { onNavigate: (p: Page) =>
               <div className="flex-1 h-1 bg-gray-600 rounded-full cursor-pointer">
                 <div className="h-full bg-primary rounded-full w-1/3" />
               </div>
-              <span className="text-white text-xs">8:32 / {currentLesson?.dur || "24:10"}</span>
+              <span className="text-white text-xs">8:32 / {currentLesson?.duration || currentLesson?.dur || "10:00"}</span>
               <button className="p-1.5 rounded-lg hover:bg-white/10 text-white transition-colors"><Settings className="w-4 h-4" /></button>
             </div>
           </div>
@@ -1258,7 +1278,7 @@ function LearningPlayerPage({ onNavigate, courseId }: { onNavigate: (p: Page) =>
           <div className="p-6 max-w-3xl">
             <h2 className="text-xl font-bold font-display mb-2">{currentLesson?.title || "React Hooks Deep Dive"}</h2>
             <div className="flex items-center gap-4 text-sm text-muted-foreground mb-6">
-              <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{currentLesson?.dur}</span>
+              <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{currentLesson?.duration || currentLesson?.dur || "10:00"}</span>
               <span className="flex items-center gap-1"><Eye className="w-3.5 h-3.5" />1,284 views</span>
             </div>
             <div className="flex border-b border-border mb-5">
@@ -1323,10 +1343,10 @@ function LearningPlayerPage({ onNavigate, courseId }: { onNavigate: (p: Page) =>
               <ProgressBar value={(totalDone / totalLessons) * 100} className="mt-2" />
             </div>
             <div>
-              {LESSON_LIST.map((section, si) => (
+              {playerSections.map((section: any, si: number) => (
                 <div key={si}>
-                  <div className="px-4 py-2.5 bg-muted/50 text-xs font-semibold text-muted-foreground uppercase tracking-wide">{section.section}</div>
-                  {section.lessons.map((lesson, li) => (
+                  <div className="px-4 py-2.5 bg-muted/50 text-xs font-semibold text-muted-foreground uppercase tracking-wide">{section.title || section.section}</div>
+                  {(section.lessons || []).map((lesson: any, li: number) => (
                     <button key={li} onClick={() => setActiveLesson({ s: si, l: li })}
                       className={cn("flex items-start gap-3 w-full text-left px-4 py-3 hover:bg-muted transition-colors border-b border-border/50 last:border-0",
                         activeLesson.s === si && activeLesson.l === li ? "bg-primary/10 border-l-2 border-l-primary" : ""
@@ -1334,7 +1354,7 @@ function LearningPlayerPage({ onNavigate, courseId }: { onNavigate: (p: Page) =>
                       {lesson.done ? <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" /> : <div className="w-4 h-4 rounded-full border-2 border-muted-foreground flex-shrink-0 mt-0.5" />}
                       <div className="flex-1 min-w-0">
                         <div className="text-xs font-medium line-clamp-2 leading-snug">{lesson.title}</div>
-                        <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1"><Clock className="w-2.5 h-2.5" />{lesson.dur}</div>
+                        <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1"><Clock className="w-2.5 h-2.5" />{lesson.duration || lesson.dur || "10:00"}</div>
                       </div>
                     </button>
                   ))}
@@ -1351,7 +1371,23 @@ function LearningPlayerPage({ onNavigate, courseId }: { onNavigate: (p: Page) =>
 // ── Student Dashboard ──────────────────────────────────────────────────────────
 function StudentDashboardPage({ onNavigate }: { onNavigate: (p: Page) => void }) {
   const [activeTab, setActiveTab] = useState("learning");
-  const enrolled = COURSES.filter(c => c.progress !== undefined);
+  const [enrolledCourses, setEnrolledCourses] = useState<Course[]>([]);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("enrolledCourses");
+    const enrolledIds = stored ? JSON.parse(stored) : [];
+    api.getCourses().then(data => {
+      const mapped = data.map(mapApiCourseToCourse);
+      const filtered = mapped.filter(c => enrolledIds.includes(c.id));
+      if (filtered.length === 0) {
+        setEnrolledCourses(COURSES.filter(c => c.progress !== undefined));
+      } else {
+        setEnrolledCourses(filtered.map((c, i) => ({ ...c, progress: i === 0 ? 64 : 12 })));
+      }
+    }).catch(console.error);
+  }, []);
+
+  const enrolled = enrolledCourses;
 
   return (
     <div className="min-h-screen">
