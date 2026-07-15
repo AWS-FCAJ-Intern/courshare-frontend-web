@@ -40,9 +40,12 @@ export interface ApiSection {
 export interface ApiLesson {
   id: string;
   title: string;
+  description?: string;
+  type: "VIDEO" | "TEXT" | "IMAGE" | "DOCUMENT";
   content?: string;
   duration?: string;
   videoUrl?: string;
+  mediaUrl?: string;
   position: number;
   free: boolean;
 }
@@ -195,11 +198,21 @@ class ApiClient {
     }
   }
 
-  async createLesson(courseId: string, sectionId: string, title: string, description: string, videoUrl: string, orderIndex: number): Promise<ApiLesson> {
+  async createLesson(
+    courseId: string,
+    sectionId: string,
+    title: string,
+    description: string,
+    type: string,
+    videoUrl: string,
+    mediaUrl: string,
+    content: string,
+    orderIndex: number
+  ): Promise<ApiLesson> {
     const res = await fetch(`${API_BASE_URL}/courses/${courseId}/sections/${sectionId}/lessons`, {
       method: "POST",
       headers: this.getHeaders(true),
-      body: JSON.stringify({ title, description, videoUrl, orderIndex }),
+      body: JSON.stringify({ title, description, type, videoUrl, mediaUrl, content, orderIndex }),
     });
     if (!res.ok) {
       throw new Error("Failed to create lesson");

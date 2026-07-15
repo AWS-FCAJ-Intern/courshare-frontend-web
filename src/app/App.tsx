@@ -1258,20 +1258,89 @@ function LearningPlayerPage({ onNavigate, courseId }: { onNavigate: (p: Page) =>
       <div className="flex flex-1 overflow-hidden">
         {/* Main content */}
         <div className="flex-1 flex flex-col overflow-y-auto">
-          {/* Video */}
-          <div className="bg-black aspect-video w-full flex items-center justify-center relative">
-            <img src={course.thumbnail} alt="Lesson thumbnail" className="w-full h-full object-cover opacity-40" />
-            <button className="absolute w-20 h-20 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition-colors backdrop-blur-sm border border-white/20">
-              <Play className="w-8 h-8 text-white fill-white ml-1" />
-            </button>
-            <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-black/80 flex items-center px-4 gap-4">
-              <button className="p-1.5 rounded-lg hover:bg-white/10 text-white transition-colors"><Play className="w-4 h-4 fill-white" /></button>
-              <div className="flex-1 h-1 bg-gray-600 rounded-full cursor-pointer">
-                <div className="h-full bg-primary rounded-full w-1/3" />
+          {/* Content Player Area */}
+          <div className="bg-black aspect-video w-full flex items-center justify-center relative overflow-hidden">
+            {(!currentLesson?.type || currentLesson.type === "VIDEO") && (
+              currentLesson?.videoUrl ? (
+                (() => {
+                  const getYouTubeEmbedUrl = (url: string): string | null => {
+                    if (!url) return null;
+                    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+                    const match = url.match(regExp);
+                    return (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}` : null;
+                  };
+                  const ytEmbedUrl = getYouTubeEmbedUrl(currentLesson.videoUrl);
+                  if (ytEmbedUrl) {
+                    return (
+                      <iframe
+                        src={ytEmbedUrl}
+                        title={currentLesson.title}
+                        className="w-full h-full border-0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                      />
+                    );
+                  }
+                  return (
+                    <video
+                      src={currentLesson.videoUrl}
+                      controls
+                      className="w-full h-full object-contain"
+                    />
+                  );
+                })()
+              ) : (
+                <>
+                  <img src={course.thumbnail} alt="Lesson thumbnail" className="w-full h-full object-cover opacity-40" />
+                  <button className="absolute w-20 h-20 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition-colors backdrop-blur-sm border border-white/20">
+                    <Play className="w-8 h-8 text-white fill-white ml-1" />
+                  </button>
+                  <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-black/80 flex items-center px-4 gap-4">
+                    <button className="p-1.5 rounded-lg hover:bg-white/10 text-white transition-colors"><Play className="w-4 h-4 fill-white" /></button>
+                    <div className="flex-1 h-1 bg-gray-600 rounded-full cursor-pointer">
+                      <div className="h-full bg-primary rounded-full w-1/3" />
+                    </div>
+                    <span className="text-white text-xs">8:32 / {currentLesson?.duration || currentLesson?.dur || "10:00"}</span>
+                    <button className="p-1.5 rounded-lg hover:bg-white/10 text-white transition-colors"><Settings className="w-4 h-4" /></button>
+                  </div>
+                </>
+              )
+            )}
+
+            {currentLesson?.type === "TEXT" && (
+              <div className="w-full h-full bg-card text-foreground p-8 overflow-y-auto text-left">
+                <div className="max-w-2xl mx-auto space-y-4">
+                  <h3 className="text-xl font-bold text-foreground border-b border-border pb-3">{currentLesson.title}</h3>
+                  <div className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                    {currentLesson.content || "Bài viết này chưa có nội dung."}
+                  </div>
+                </div>
               </div>
-              <span className="text-white text-xs">8:32 / {currentLesson?.duration || currentLesson?.dur || "10:00"}</span>
-              <button className="p-1.5 rounded-lg hover:bg-white/10 text-white transition-colors"><Settings className="w-4 h-4" /></button>
-            </div>
+            )}
+
+            {currentLesson?.type === "IMAGE" && (
+              <div className="w-full h-full flex items-center justify-center bg-gray-950">
+                {currentLesson.mediaUrl ? (
+                  <img src={currentLesson.mediaUrl} className="max-w-full max-h-full object-contain" alt={currentLesson.title} />
+                ) : (
+                  <span className="text-sm text-muted-foreground">No image URL provided</span>
+                )}
+              </div>
+            )}
+
+            {currentLesson?.type === "DOCUMENT" && (
+              <div className="w-full h-full bg-gray-950 flex flex-col">
+                {currentLesson.mediaUrl ? (
+                  currentLesson.mediaUrl.toLowerCase().endsWith(".pdf") ? (
+                    <iframe src={currentLesson.mediaUrl} className="w-full h-full border-none" title={currentLesson.title} />
+                  ) : (
+                    <iframe src={`https://docs.google.com/viewer?url=${encodeURIComponent(currentLesson.mediaUrl)}&embedded=true`} className="w-full h-full border-none" title={currentLesson.title} />
+                  )
+                ) : (
+                  <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">No document URL provided</div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Lesson info */}
@@ -1804,7 +1873,10 @@ function CourseBuilderPage({ onNavigate, courseId }: { onNavigate: (p: Page) => 
   const [activeSectionIdForLesson, setActiveSectionIdForLesson] = useState<string | null>(null);
   const [lessonTitle, setLessonTitle] = useState("");
   const [lessonDesc, setLessonDesc] = useState("");
+  const [lessonType, setLessonType] = useState("VIDEO");
   const [lessonVideo, setLessonVideo] = useState("");
+  const [lessonMediaUrl, setLessonMediaUrl] = useState("");
+  const [lessonContent, setLessonContent] = useState("");
   const [loading, setLoading] = useState(false);
 
   const fetchCourseDetails = () => {
@@ -1852,10 +1924,23 @@ function CourseBuilderPage({ onNavigate, courseId }: { onNavigate: (p: Page) => 
     try {
       const section = course?.sections?.find((s: any) => s.id === sectionId);
       const orderIndex = (section?.lessons?.length || 0) + 1;
-      await api.createLesson(courseId, sectionId, lessonTitle, lessonDesc, lessonVideo, orderIndex);
+      await api.createLesson(
+        courseId,
+        sectionId,
+        lessonTitle,
+        lessonDesc,
+        lessonType,
+        lessonVideo,
+        lessonMediaUrl,
+        lessonContent,
+        orderIndex
+      );
       setLessonTitle("");
       setLessonDesc("");
+      setLessonType("VIDEO");
       setLessonVideo("");
+      setLessonMediaUrl("");
+      setLessonContent("");
       setActiveSectionIdForLesson(null);
       fetchCourseDetails();
     } catch (err: any) {
@@ -1982,7 +2067,29 @@ function CourseBuilderPage({ onNavigate, courseId }: { onNavigate: (p: Page) => 
                         <h4 className="text-xs font-bold">New Lesson</h4>
                         <input value={lessonTitle} onChange={e => setLessonTitle(e.target.value)} required placeholder="Lesson title (e.g. Introduction to components)" className="w-full px-3 py-1.5 border border-border rounded-lg text-xs bg-input-background focus:outline-none" />
                         <input value={lessonDesc} onChange={e => setLessonDesc(e.target.value)} placeholder="Short description (optional)" className="w-full px-3 py-1.5 border border-border rounded-lg text-xs bg-input-background focus:outline-none" />
-                        <input value={lessonVideo} onChange={e => setLessonVideo(e.target.value)} placeholder="Video URL (e.g. https://youtube.com/...)" className="w-full px-3 py-1.5 border border-border rounded-lg text-xs bg-input-background focus:outline-none" />
+                        
+                        <div>
+                          <label className="text-[10px] font-bold block mb-1 text-muted-foreground uppercase tracking-wider">Lesson Type</label>
+                          <select value={lessonType} onChange={e => setLessonType(e.target.value)} className="w-full px-3 py-1.5 border border-border rounded-lg text-xs bg-input-background focus:outline-none">
+                            <option value="VIDEO">Video Lecture (YouTube)</option>
+                            <option value="TEXT">Text Reader (Markdown)</option>
+                            <option value="IMAGE">Image Display</option>
+                            <option value="DOCUMENT">Document (PDF/Link)</option>
+                          </select>
+                        </div>
+
+                        {lessonType === "VIDEO" && (
+                          <input value={lessonVideo} onChange={e => setLessonVideo(e.target.value)} placeholder="Video URL (e.g. https://www.youtube.com/watch?v=...)" className="w-full px-3 py-1.5 border border-border rounded-lg text-xs bg-input-background focus:outline-none" />
+                        )}
+
+                        {(lessonType === "IMAGE" || lessonType === "DOCUMENT") && (
+                          <input value={lessonMediaUrl} onChange={e => setLessonMediaUrl(e.target.value)} required placeholder="Media URL (e.g. image or PDF file link)" className="w-full px-3 py-1.5 border border-border rounded-lg text-xs bg-input-background focus:outline-none" />
+                        )}
+
+                        {lessonType === "TEXT" && (
+                          <textarea value={lessonContent} onChange={e => setLessonContent(e.target.value)} required placeholder="Lesson content (Markdown / HTML / Plain text)..." rows={6} className="w-full px-3 py-1.5 border border-border rounded-lg text-xs bg-input-background focus:outline-none resize-y" />
+                        )}
+
                         <div className="flex justify-end gap-2 text-[10px]">
                           <button type="button" onClick={() => setActiveSectionIdForLesson(null)} className="px-2.5 py-1 border border-border rounded-md hover:bg-muted transition-colors">Cancel</button>
                           <button type="submit" disabled={loading} className="px-3 py-1 bg-primary text-white font-semibold rounded-md hover:bg-primary/90 transition-colors">{loading ? "Adding..." : "Add"}</button>
