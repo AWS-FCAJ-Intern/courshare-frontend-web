@@ -183,12 +183,21 @@ importers:
         specifier: 1.1.2
         version: 1.1.2(@types/react@19.2.17)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
     devDependencies:
+      '@esbuild/linux-x64':
+        specifier: ^0.25.12
+        version: 0.25.12
       '@esbuild/win32-x64':
         specifier: ^0.25.12
         version: 0.25.12
+      '@rollup/rollup-linux-x64-musl':
+        specifier: ^4.62.2
+        version: 4.62.2
       '@rollup/rollup-win32-x64-msvc':
         specifier: ^4.62.2
         version: 4.62.2
+      '@tailwindcss/oxide-linux-x64-musl':
+        specifier: ^4.1.12
+        version: 4.1.12
       '@tailwindcss/oxide-win32-x64-msvc':
         specifier: ^4.1.12
         version: 4.1.12
@@ -198,9 +207,12 @@ importers:
       '@vitejs/plugin-react':
         specifier: 4.7.0
         version: 4.7.0(vite@6.3.5(jiti@2.7.0)(lightningcss@1.30.1))
+      lightningcss-linux-x64-musl:
+        specifier: ^1.32.0
+        version: 1.33.0
       lightningcss-win32-x64-msvc:
         specifier: ^1.32.0
-        version: 1.32.0
+        version: 1.33.0
       tailwindcss:
         specifier: 4.1.12
         version: 4.1.12
@@ -1920,6 +1932,13 @@ packages:
     os: [linux]
     libc: [musl]
 
+  lightningcss-linux-x64-musl@1.33.0:
+    resolution: {integrity: sha512-RYiYbkokw0trfKqqzfF55lginwEPrD3OJDfTuJzFs1MK6iFnDenaz1fqLLtX4ITG3OktJQXOeTaw1awrBAlZPw==}
+    engines: {node: '>= 12.0.0'}
+    cpu: [x64]
+    os: [linux]
+    libc: [musl]
+
   lightningcss-win32-arm64-msvc@1.30.1:
     resolution: {integrity: sha512-mSL4rqPi4iXq5YVqzSsJgMVFENoa4nGTT/GjO2c0Yl9OuQfPsIfncvLrEW6RbbB24WtZ3xP/2CCmI3tNkNV4oA==}
     engines: {node: '>= 12.0.0'}
@@ -1932,8 +1951,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  lightningcss-win32-x64-msvc@1.32.0:
-    resolution: {integrity: sha512-Amq9B/SoZYdDi1kFrojnoqPLxYhQ4Wo5XiL8EVJrVsB8ARoC1PWW6VGtT0WKCemjy8aC+louJnjS7U18x3b06Q==}
+  lightningcss-win32-x64-msvc@1.33.0:
+    resolution: {integrity: sha512-OlEICDx/Xl0FqSp4bry8zFnCvGpig3Gl4gCquvYwHuqJKEC1+n9NgDniFvqHGmMv1ZkqDJrDqKKSykTDX+ehuA==}
     engines: {node: '>= 12.0.0'}
     cpu: [x64]
     os: [win32]
@@ -2602,8 +2621,7 @@ snapshots:
   '@esbuild/linux-s390x@0.25.12':
     optional: true
 
-  '@esbuild/linux-x64@0.25.12':
-    optional: true
+  '@esbuild/linux-x64@0.25.12': {}
 
   '@esbuild/netbsd-arm64@0.25.12':
     optional: true
@@ -3457,8 +3475,7 @@ snapshots:
   '@rollup/rollup-linux-x64-gnu@4.62.2':
     optional: true
 
-  '@rollup/rollup-linux-x64-musl@4.62.2':
-    optional: true
+  '@rollup/rollup-linux-x64-musl@4.62.2': {}
 
   '@rollup/rollup-openbsd-x64@4.62.2':
     optional: true
@@ -3511,8 +3528,7 @@ snapshots:
   '@tailwindcss/oxide-linux-x64-gnu@4.1.12':
     optional: true
 
-  '@tailwindcss/oxide-linux-x64-musl@4.1.12':
-    optional: true
+  '@tailwindcss/oxide-linux-x64-musl@4.1.12': {}
 
   '@tailwindcss/oxide-wasm32-wasi@4.1.12':
     optional: true
@@ -3898,13 +3914,15 @@ snapshots:
   lightningcss-linux-x64-musl@1.30.1:
     optional: true
 
+  lightningcss-linux-x64-musl@1.33.0: {}
+
   lightningcss-win32-arm64-msvc@1.30.1:
     optional: true
 
   lightningcss-win32-x64-msvc@1.30.1:
     optional: true
 
-  lightningcss-win32-x64-msvc@1.32.0: {}
+  lightningcss-win32-x64-msvc@1.33.0: {}
 
   lightningcss@1.30.1:
     dependencies:

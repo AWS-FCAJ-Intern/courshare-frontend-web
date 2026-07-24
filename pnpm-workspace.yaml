@@ -2,9 +2,14 @@ packages:
   - '.'
 supportedArchitectures:
   os:
+    - current
+    - win32
     - linux
   cpu:
+    - current
     - x64
     - arm64
   libc:
+    - current
     - glibc
+    - musl

@@ -1259,9 +1259,9 @@ function LearningPlayerPage({ onNavigate, courseId }: { onNavigate: (p: Page) =>
         {/* Main content */}
         <div className="flex-1 flex flex-col overflow-y-auto">
           {/* Content Player Area */}
-          <div className="bg-black aspect-video w-full flex items-center justify-center relative overflow-hidden">
-            {(!currentLesson?.type || currentLesson.type === "VIDEO") && (
-              currentLesson?.videoUrl ? (
+          {(!currentLesson?.type || currentLesson.type === "VIDEO") && (
+            <div className="bg-black aspect-video w-full flex items-center justify-center relative overflow-hidden">
+              {currentLesson?.videoUrl ? (
                 (() => {
                   const getYouTubeEmbedUrl = (url: string): string | null => {
                     if (!url) return null;
@@ -1304,52 +1304,65 @@ function LearningPlayerPage({ onNavigate, courseId }: { onNavigate: (p: Page) =>
                     <button className="p-1.5 rounded-lg hover:bg-white/10 text-white transition-colors"><Settings className="w-4 h-4" /></button>
                   </div>
                 </>
-              )
-            )}
+              )}
+            </div>
+          )}
 
-            {currentLesson?.type === "TEXT" && (
-              <div className="w-full h-full bg-card text-foreground p-8 overflow-y-auto text-left">
-                <div className="max-w-2xl mx-auto space-y-4">
-                  <h3 className="text-xl font-bold text-foreground border-b border-border pb-3">{currentLesson.title}</h3>
-                  <div className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                    {currentLesson.content || "Bài viết này chưa có nội dung."}
-                  </div>
+          {currentLesson?.type === "TEXT" && (
+            <div className="w-full bg-card border-b border-border text-foreground px-6 py-10 md:px-12 md:py-16 text-left">
+              <div className="max-w-2xl mx-auto space-y-6">
+                <h1 className="text-3xl font-bold font-display tracking-tight text-foreground">{currentLesson.title}</h1>
+                {currentLesson.description && (
+                  <p className="text-base text-muted-foreground border-l-4 border-primary pl-4 py-1 italic">
+                    {currentLesson.description}
+                  </p>
+                )}
+                <div className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed prose dark:prose-invert max-w-none pt-4">
+                  {currentLesson.content || "Bài viết này chưa có nội dung."}
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
-            {currentLesson?.type === "IMAGE" && (
-              <div className="w-full h-full flex items-center justify-center bg-gray-950">
-                {currentLesson.mediaUrl ? (
-                  <img src={currentLesson.mediaUrl} className="max-w-full max-h-full object-contain" alt={currentLesson.title} />
-                ) : (
-                  <span className="text-sm text-muted-foreground">No image URL provided</span>
-                )}
-              </div>
-            )}
+          {currentLesson?.type === "IMAGE" && (
+            <div className="w-full min-h-[400px] md:min-h-[500px] bg-gray-950 flex flex-col items-center justify-center p-4 border-b border-border">
+              {currentLesson.mediaUrl ? (
+                <div className="relative group max-w-4xl rounded-lg overflow-hidden border border-white/10 shadow-2xl">
+                  <img src={currentLesson.mediaUrl} className="max-h-[70vh] object-contain" alt={currentLesson.title} />
+                </div>
+              ) : (
+                <span className="text-sm text-muted-foreground">No image URL provided</span>
+              )}
+            </div>
+          )}
 
-            {currentLesson?.type === "DOCUMENT" && (
-              <div className="w-full h-full bg-gray-950 flex flex-col">
-                {currentLesson.mediaUrl ? (
-                  currentLesson.mediaUrl.toLowerCase().endsWith(".pdf") ? (
-                    <iframe src={currentLesson.mediaUrl} className="w-full h-full border-none" title={currentLesson.title} />
-                  ) : (
-                    <iframe src={`https://docs.google.com/viewer?url=${encodeURIComponent(currentLesson.mediaUrl)}&embedded=true`} className="w-full h-full border-none" title={currentLesson.title} />
-                  )
+          {currentLesson?.type === "DOCUMENT" && (
+            <div className="w-full h-[600px] md:h-[750px] bg-gray-950 flex flex-col border-b border-border">
+              {currentLesson.mediaUrl ? (
+                currentLesson.mediaUrl.toLowerCase().endsWith(".pdf") ? (
+                  <iframe src={currentLesson.mediaUrl} className="w-full h-full border-none" title={currentLesson.title} />
                 ) : (
-                  <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">No document URL provided</div>
-                )}
-              </div>
-            )}
-          </div>
+                  <iframe src={`https://docs.google.com/viewer?url=${encodeURIComponent(currentLesson.mediaUrl)}&embedded=true`} className="w-full h-full border-none" title={currentLesson.title} />
+                )
+              ) : (
+                <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">No document URL provided</div>
+              )}
+            </div>
+          )}
 
           {/* Lesson info */}
           <div className="p-6 max-w-3xl">
-            <h2 className="text-xl font-bold font-display mb-2">{currentLesson?.title || "React Hooks Deep Dive"}</h2>
+            {currentLesson?.type !== "TEXT" && (
+              <>
+                <h2 className="text-xl font-bold font-display mb-2">{currentLesson?.title || "React Hooks Deep Dive"}</h2>
+                {currentLesson?.description && <p className="text-sm text-muted-foreground mb-4">{currentLesson.description}</p>}
+              </>
+            )}
             <div className="flex items-center gap-4 text-sm text-muted-foreground mb-6">
               <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{currentLesson?.duration || currentLesson?.dur || "10:00"}</span>
               <span className="flex items-center gap-1"><Eye className="w-3.5 h-3.5" />1,284 views</span>
             </div>
+
             <div className="flex border-b border-border mb-5">
               {["overview", "notes", "resources", "discussion"].map(t => (
                 <button key={t} onClick={() => setActiveTab(t)}

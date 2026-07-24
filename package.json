@@ -66,11 +66,15 @@
   },
   "devDependencies": {
     "@esbuild/win32-x64": "^0.25.12",
+    "@esbuild/linux-x64": "^0.25.12",
     "@rollup/rollup-win32-x64-msvc": "^4.62.2",
+    "@rollup/rollup-linux-x64-musl": "^4.62.2",
     "@tailwindcss/oxide-win32-x64-msvc": "^4.1.12",
+    "@tailwindcss/oxide-linux-x64-musl": "^4.1.12",
     "@tailwindcss/vite": "4.1.12",
     "@vitejs/plugin-react": "4.7.0",
     "lightningcss-win32-x64-msvc": "^1.32.0",
+    "lightningcss-linux-x64-musl": "^1.32.0",
     "tailwindcss": "4.1.12",
     "vite": "6.3.5"
   },
@@ -89,6 +93,11 @@
   "pnpm": {
     "overrides": {
       "vite": "6.3.5"
+    },
+    "supportedArchitectures": {
+      "os": ["current", "win32", "linux"],
+      "cpu": ["current", "x64", "arm64"],
+      "libc": ["current", "glibc", "musl"]
     }
   }
 }
