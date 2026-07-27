@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://localhost:8080";
+const API_BASE_URL = "https://vym4gm40oc.execute-api.ap-southeast-1.amazonaws.com";
 
 export interface UserProfile {
   id: string;
