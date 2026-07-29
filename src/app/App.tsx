@@ -42,6 +42,7 @@ interface Course {
   published?: boolean;
   revenue?: number;
   sections?: any[];
+  instructorId?: string;
 }
 
 export function mapApiCourseToCourse(apiCourse: any): Course {
@@ -62,6 +63,7 @@ export function mapApiCourseToCourse(apiCourse: any): Course {
     lessons: apiCourse.sections ? apiCourse.sections.flatMap((s: any) => s.lessons || []).length : 10,
     published: apiCourse.published,
     sections: apiCourse.sections,
+    instructorId: apiCourse.instructorId,
   };
 }
 
@@ -259,9 +261,9 @@ function CourseCard({ course, onNavigate, onSelectCourse }: { course: Course; on
 }
 
 // ── Navbar ─────────────────────────────────────────────────────────────────────
-function Navbar({ page, onNavigate, dark, onDark, role, isLoggedIn, onLogout }: {
+function Navbar({ page, onNavigate, dark, onDark, role, isLoggedIn, onLogout, profile }: {
   page: Page; onNavigate: (p: Page) => void; dark: boolean; onDark: () => void;
-  role: Role; isLoggedIn: boolean; onLogout: () => void;
+  role: Role; isLoggedIn: boolean; onLogout: () => void; profile: any;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
@@ -323,8 +325,8 @@ function Navbar({ page, onNavigate, dark, onDark, role, isLoggedIn, onLogout }: 
                 {userOpen && (
                   <div className="absolute right-0 top-full mt-2 w-52 bg-card border border-border rounded-xl shadow-xl overflow-hidden z-50">
                     <div className="px-4 py-3 border-b border-border">
-                      <div className="font-semibold text-sm">{role === "student" ? "Alex Student" : role === "instructor" ? "Sarah Chen" : "Admin User"}</div>
-                      <div className="text-xs text-muted-foreground">{role}@courshare.io</div>
+                      <div className="font-semibold text-sm">{profile?.fullName || (role === "student" ? "Alex Student" : role === "instructor" ? "Sarah Chen" : "Admin User")}</div>
+                      <div className="text-xs text-muted-foreground">{profile?.email || `${role}@courshare.io`}</div>
                     </div>
                     <div className="p-1">
                       <button onClick={() => { onNavigate(role === "student" ? "student" : role === "instructor" ? "instructor" : "admin"); setUserOpen(false); }} className="flex items-center gap-2 w-full px-3 py-2 text-sm rounded-lg hover:bg-muted transition-colors">
@@ -1616,7 +1618,7 @@ function StudentDashboardPage({ onNavigate, profile }: { onNavigate: (p: Page) =
 }
 
 // ── Instructor Portal ──────────────────────────────────────────────────────────
-function InstructorPortalPage({ onNavigate, onSelectCourse }: { onNavigate: (p: Page) => void; onSelectCourse?: (id: string) => void }) {
+function InstructorPortalPage({ onNavigate, onSelectCourse, profile }: { onNavigate: (p: Page) => void; onSelectCourse?: (id: string) => void; profile: any }) {
   const [activeTab, setActiveTab] = useState("courses");
   const [courses, setCourses] = useState<Course[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
@@ -1629,14 +1631,16 @@ function InstructorPortalPage({ onNavigate, onSelectCourse }: { onNavigate: (p: 
 
   const fetchCourses = () => {
     api.getCourses().then(data => {
-      setCourses(data.map(mapApiCourseToCourse));
+      const mapped = data.map(mapApiCourseToCourse);
+      const filtered = profile ? mapped.filter(c => c.instructorId === profile.id) : mapped;
+      setCourses(filtered);
     }).catch(console.error);
   };
 
   useEffect(() => {
     fetchCourses();
     api.getCategories().then(setCategories).catch(console.error);
-  }, []);
+  }, [profile]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1659,7 +1663,14 @@ function InstructorPortalPage({ onNavigate, onSelectCourse }: { onNavigate: (p: 
     }
   };
 
-  const myCourses = courses.length > 0 ? courses : COURSES.slice(0, 4);
+  const myCourses = courses;
+
+  const totalRevenue = courses.reduce((sum, c) => sum + (c.price * 12.5), 0); // Mock dynamic revenue calculation from database price
+  const totalStudents = courses.reduce((sum, c) => sum + (c.students || 0), 0);
+  const publishedCourses = courses.filter(c => c.published).length;
+  const avgRating = courses.length > 0
+    ? (courses.reduce((sum, c) => sum + (c.rating || 0), 0) / courses.length).toFixed(2)
+    : "0.00";
 
   return (
     <div className="min-h-screen">
@@ -1667,7 +1678,7 @@ function InstructorPortalPage({ onNavigate, onSelectCourse }: { onNavigate: (p: 
         <div className="max-w-7xl mx-auto flex items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold font-display mb-1">Instructor Dashboard</h1>
-            <p className="text-muted-foreground text-sm">Welcome back, Sarah. Your courses are performing great!</p>
+            <p className="text-muted-foreground text-sm">Welcome back, {profile?.fullName || "Sarah"}. Your courses are performing great!</p>
           </div>
           <button onClick={() => setIsModalOpen(false) || setIsModalOpen(true)} className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white text-sm font-medium rounded-xl hover:bg-primary/90 transition-colors">
             <PlusCircle className="w-4 h-4" /> New Course
@@ -1677,10 +1688,10 @@ function InstructorPortalPage({ onNavigate, onSelectCourse }: { onNavigate: (p: 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <StatCard icon={DollarSign} label="Total Revenue" value="$62,100" sub="+18% this month" color="text-emerald-600" bg="bg-emerald-100 dark:bg-emerald-900/30" />
-          <StatCard icon={Users} label="Total Students" value="46,960" sub="+324 this week" color="text-primary" bg="bg-primary/10" />
-          <StatCard icon={BookOpen} label="Published Courses" value="4" sub="1 in draft" color="text-violet-600" bg="bg-violet-100 dark:bg-violet-900/30" />
-          <StatCard icon={Star} label="Average Rating" value="4.85" sub="From 9,155 reviews" color="text-amber-600" bg="bg-amber-100 dark:bg-amber-900/30" />
+          <StatCard icon={DollarSign} label="Total Revenue" value={`$${totalRevenue.toLocaleString(undefined, {maximumFractionDigits:0})}`} sub="From active courses" color="text-emerald-600" bg="bg-emerald-100 dark:bg-emerald-900/30" />
+          <StatCard icon={Users} label="Total Students" value={totalStudents.toLocaleString()} sub="Enrolled learners" color="text-primary" bg="bg-primary/10" />
+          <StatCard icon={BookOpen} label="Published Courses" value={publishedCourses.toString()} sub={`${courses.length - publishedCourses} in draft`} color="text-violet-600" bg="bg-violet-100 dark:bg-violet-900/30" />
+          <StatCard icon={Star} label="Average Rating" value={avgRating} sub="Average rating" color="text-amber-600" bg="bg-amber-100 dark:bg-amber-900/30" />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -1722,42 +1733,53 @@ function InstructorPortalPage({ onNavigate, onSelectCourse }: { onNavigate: (p: 
               </div>
 
               {activeTab === "courses" && (
-                <table className="w-full">
-                  <thead><tr className="border-b border-border bg-muted/50">
-                    <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Course</th>
-                    <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Students</th>
-                    <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Revenue</th>
-                    <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Rating</th>
-                    <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Status</th>
-                    <th className="px-4 py-3" />
-                  </tr></thead>
-                  <tbody>
-                    {myCourses.map(c => (
-                      <tr key={c.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-3">
-                            <img src={c.thumbnail} alt={c.title} className="w-10 h-7 object-cover rounded-md flex-shrink-0 bg-muted" />
-                            <div className="min-w-0"><div className="text-xs font-medium truncate font-display max-w-40">{c.title}</div><div className="text-xs text-muted-foreground">{c.lessons} lessons</div></div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-right text-xs">{formatK(c.students)}</td>
-                        <td className="px-4 py-3 text-right text-xs font-medium">${(c.revenue! / 1000).toFixed(1)}k</td>
-                        <td className="px-4 py-3 text-right"><div className="flex items-center justify-end gap-1 text-xs"><Star className="w-3 h-3 fill-amber-400 text-amber-400" />{c.rating}</div></td>
-                        <td className="px-4 py-3 text-right"><Badge variant={c.published ? "success" : "warning"}>{c.published ? "Published" : "Draft"}</Badge></td>
-                        <td className="px-4 py-3 text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <button onClick={() => { if (onSelectCourse) onSelectCourse(c.id); onNavigate("builder"); }} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title="Course Builder"><Edit className="w-3.5 h-3.5" /></button>
-                            <button onClick={() => {
-                              if (confirm("Are you sure you want to delete this course?")) {
-                                api.deleteCourse(c.id).then(() => fetchCourses()).catch(err => alert(err.message || "Failed to delete"));
-                              }
-                            }} className="p-1.5 rounded-lg hover:bg-muted text-rose-500 transition-colors" title="Delete Course"><Trash2 className="w-3.5 h-3.5" /></button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                myCourses.length === 0 ? (
+                  <div className="p-12 text-center text-muted-foreground flex flex-col items-center justify-center">
+                    <BookOpen className="w-12 h-12 mb-3 text-muted-foreground/40" />
+                    <h4 className="text-sm font-bold text-foreground">No Courses Found</h4>
+                    <p className="text-xs max-w-sm mt-1 mb-4 text-muted-foreground/80">You haven't created any courses yet. Share your expertise with the world today!</p>
+                    <button onClick={() => setIsModalOpen(true)} className="px-4 py-2 bg-primary hover:bg-primary/95 text-white text-xs font-semibold rounded-xl shadow-md transition-colors">
+                      Create Your First Course
+                    </button>
+                  </div>
+                ) : (
+                  <table className="w-full">
+                    <thead><tr className="border-b border-border bg-muted/50">
+                      <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Course</th>
+                      <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Students</th>
+                      <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Revenue</th>
+                      <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Rating</th>
+                      <th className="text-right text-xs font-medium text-muted-foreground px-4 py-3">Status</th>
+                      <th className="px-4 py-3" />
+                    </tr></thead>
+                    <tbody>
+                      {myCourses.map(c => (
+                        <tr key={c.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              <img src={c.thumbnail} alt={c.title} className="w-10 h-7 object-cover rounded-md flex-shrink-0 bg-muted" />
+                              <div className="min-w-0"><div className="text-xs font-medium truncate font-display max-w-40">{c.title}</div><div className="text-xs text-muted-foreground">{c.lessons} lessons</div></div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-right text-xs">{formatK(c.students)}</td>
+                          <td className="px-4 py-3 text-right text-xs font-medium">${c.price}</td>
+                          <td className="px-4 py-3 text-right"><div className="flex items-center justify-end gap-1 text-xs"><Star className="w-3 h-3 fill-amber-400 text-amber-400" />{c.rating}</div></td>
+                          <td className="px-4 py-3 text-right"><Badge variant={c.published ? "success" : "warning"}>{c.published ? "Published" : "Draft"}</Badge></td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <button onClick={() => { if (onSelectCourse) onSelectCourse(c.id); onNavigate("builder"); }} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title="Course Builder"><Edit className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => {
+                                if (confirm("Are you sure you want to delete this course?")) {
+                                  api.deleteCourse(c.id).then(() => fetchCourses()).catch(err => alert(err.message || "Failed to delete"));
+                                }
+                              }} className="p-1.5 rounded-lg hover:bg-muted text-rose-500 transition-colors" title="Delete Course"><Trash2 className="w-3.5 h-3.5" /></button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )
               )}
 
               {activeTab === "analytics" && (
@@ -2616,9 +2638,8 @@ export default function App() {
 
   return (
     <div className={cn("min-h-screen bg-background text-foreground", dark && "dark")}>
-      <DemoBanner role={role} setRole={setRole} page={page} onNavigate={navigate} />
       {showNav && (
-        <Navbar page={page} onNavigate={navigate} dark={dark} onDark={() => setDark(!dark)} role={role} isLoggedIn={isLoggedIn} onLogout={handleLogout} />
+        <Navbar page={page} onNavigate={navigate} dark={dark} onDark={() => setDark(!dark)} role={role} isLoggedIn={isLoggedIn} onLogout={handleLogout} profile={profile} />
       )}
 
       <motion.div key={page} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
