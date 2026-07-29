@@ -1451,7 +1451,7 @@ function LearningPlayerPage({ onNavigate, courseId }: { onNavigate: (p: Page) =>
 }
 
 // ── Student Dashboard ──────────────────────────────────────────────────────────
-function StudentDashboardPage({ onNavigate }: { onNavigate: (p: Page) => void }) {
+function StudentDashboardPage({ onNavigate, profile }: { onNavigate: (p: Page) => void; profile: any }) {
   const [activeTab, setActiveTab] = useState("learning");
   const [enrolledCourses, setEnrolledCourses] = useState<Course[]>([]);
 
@@ -1475,7 +1475,7 @@ function StudentDashboardPage({ onNavigate }: { onNavigate: (p: Page) => void })
     <div className="min-h-screen">
       <div className="bg-gradient-to-r from-primary/10 to-accent/5 border-b border-border py-8 px-4">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-2xl font-bold font-display mb-1">Welcome back, Alex 👋</h1>
+          <h1 className="text-2xl font-bold font-display mb-1">Welcome back, {profile?.fullName || "Alex"} 👋</h1>
           <p className="text-muted-foreground text-sm">Keep up the great work! You are on a 7-day learning streak.</p>
         </div>
       </div>
@@ -2409,7 +2409,7 @@ function AuthPage({ onNavigate, onLogin }: { onNavigate: (p: Page) => void; onLo
       if (mode === "login") {
         await api.login(email, password);
       } else {
-        await api.register(email, password, name);
+        await api.register(email, password, name, selectedRole);
       }
       const profile = await api.getProfile();
       let matchedRole: Role = "student";
@@ -2573,20 +2573,24 @@ export default function App() {
   const [role, setRole] = useState<Role>("student");
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem("accessToken"));
   const [selectedCourseId, setSelectedCourseId] = useState<string>("");
+  const [profile, setProfile] = useState<any>(null);
 
   useEffect(() => {
     if (isLoggedIn) {
-      api.getProfile().then(profile => {
+      api.getProfile().then(userProfile => {
+        setProfile(userProfile);
         let matchedRole: Role = "student";
-        if (profile.roles.includes("ADMIN") || profile.roles.includes("ROLE_ADMIN")) {
+        if (userProfile.roles.includes("ADMIN") || userProfile.roles.includes("ROLE_ADMIN")) {
           matchedRole = "admin";
-        } else if (profile.roles.includes("INSTRUCTOR") || profile.roles.includes("ROLE_INSTRUCTOR")) {
+        } else if (userProfile.roles.includes("INSTRUCTOR") || userProfile.roles.includes("ROLE_INSTRUCTOR")) {
           matchedRole = "instructor";
         }
         setRole(matchedRole);
       }).catch(() => {
         handleLogout();
       });
+    } else {
+      setProfile(null);
     }
   }, [isLoggedIn]);
 
@@ -2602,6 +2606,7 @@ export default function App() {
 
   const handleLogout = () => {
     api.logout();
+    setProfile(null);
     setIsLoggedIn(false);
     navigate("home");
   };
@@ -2622,7 +2627,7 @@ export default function App() {
         {page === "course" && <CourseDetailPage onNavigate={navigate} courseId={selectedCourseId} />}
         {page === "checkout" && <CheckoutPage onNavigate={navigate} courseId={selectedCourseId} />}
         {page === "player" && <LearningPlayerPage onNavigate={navigate} courseId={selectedCourseId} />}
-        {page === "student" && <StudentDashboardPage onNavigate={navigate} />}
+        {page === "student" && <StudentDashboardPage onNavigate={navigate} profile={profile} />}
         {page === "instructor" && <InstructorPortalPage onNavigate={navigate} onSelectCourse={setSelectedCourseId} />}
         {page === "builder" && <CourseBuilderPage onNavigate={navigate} courseId={selectedCourseId} />}
         {page === "admin" && <AdminDashboardPage />}

@@ -1,4 +1,4 @@
-const API_BASE_URL = "https://vym4gm40oc.execute-api.ap-southeast-1.amazonaws.com";
+const API_BASE_URL = "https://c1s4a83jbk.execute-api.ap-southeast-1.amazonaws.com";
 
 export interface UserProfile {
   id: string;
@@ -84,11 +84,11 @@ class ApiClient {
     return data;
   }
 
-  async register(email: string, password: string, fullName: string): Promise<AuthResponse> {
+  async register(email: string, password: string, fullName: string, role: string): Promise<AuthResponse> {
     const res = await fetch(`${API_BASE_URL}/auth/register`, {
       method: "POST",
       headers: this.getHeaders(),
-      body: JSON.stringify({ email, password, fullName }),
+      body: JSON.stringify({ email, password, fullName, role }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ message: "Registration failed" }));
