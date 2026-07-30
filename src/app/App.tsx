@@ -19,7 +19,7 @@ import {
 import { motion } from "motion/react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
-type Page = "home" | "catalog" | "course" | "checkout" | "player" | "student" | "instructor" | "admin" | "auth" | "builder";
+type Page = "home" | "catalog" | "course" | "checkout" | "player" | "student" | "instructor" | "admin" | "auth" | "builder" | "profile";
 type Role = "student" | "instructor" | "admin";
 
 interface Course {
@@ -200,6 +200,20 @@ function StatCard({ icon: Icon, label, value, sub, color = "text-primary", bg = 
 }
 
 function CourseCard({ course, onNavigate, onSelectCourse }: { course: Course; onNavigate: (p: Page) => void; onSelectCourse?: (id: string) => void }) {
+  const [instName, setInstName] = useState(course.instructor);
+
+  useEffect(() => {
+    if (course.instructorId) {
+      api.getPublicProfile(course.instructorId)
+        .then(prof => {
+          if (prof && (prof.fullName || prof.email)) {
+            setInstName(prof.fullName || prof.email);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [course.instructorId]);
+
   return (
     <div
       onClick={() => {
@@ -229,8 +243,8 @@ function CourseCard({ course, onNavigate, onSelectCourse }: { course: Course; on
         </div>
         <h3 className="font-semibold text-sm leading-snug mb-2 line-clamp-2 font-display">{course.title}</h3>
         <div className="flex items-center gap-2 mb-2">
-          <img src={course.instructorAvatar} alt={course.instructor} className="w-5 h-5 rounded-full object-cover" />
-          <span className="text-xs text-muted-foreground">{course.instructor}</span>
+          <img src={course.instructorAvatar} alt={instName} className="w-5 h-5 rounded-full object-cover" />
+          <span className="text-xs text-muted-foreground">{instName}</span>
         </div>
         <StarRating rating={course.rating} count={course.reviewCount} />
         <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
@@ -268,11 +282,13 @@ function Navbar({ page, onNavigate, dark, onDark, role, isLoggedIn, onLogout, pr
   const [menuOpen, setMenuOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
 
+  const hasRole = (r: string) => profile?.roles?.includes(r) || profile?.roles?.includes(`ROLE_${r}`);
+
   const navLinks: { label: string; page: Page }[] = [
     { label: "Browse", page: "catalog" },
-    ...(isLoggedIn && role === "student" ? [{ label: "My Learning", page: "student" as Page }] : []),
-    ...(isLoggedIn && role === "instructor" ? [{ label: "Instructor", page: "instructor" as Page }] : []),
-    ...(isLoggedIn && role === "admin" ? [{ label: "Admin", page: "admin" as Page }] : []),
+    ...(isLoggedIn && (hasRole("STUDENT") || role === "student") ? [{ label: "My Learning", page: "student" as Page }] : []),
+    ...(isLoggedIn && (hasRole("INSTRUCTOR") || role === "instructor") ? [{ label: "Instructor", page: "instructor" as Page }] : []),
+    ...(isLoggedIn && (hasRole("ADMIN") || role === "admin") ? [{ label: "Admin", page: "admin" as Page }] : []),
   ];
 
   return (
@@ -318,7 +334,7 @@ function Navbar({ page, onNavigate, dark, onDark, role, isLoggedIn, onLogout, pr
               <div className="relative">
                 <button onClick={() => setUserOpen(!userOpen)} className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-muted transition-colors">
                   <div className="w-7 h-7 bg-primary rounded-full flex items-center justify-center text-white text-xs font-bold">
-                    {role === "student" ? "S" : role === "instructor" ? "I" : "A"}
+                    {profile?.fullName ? profile.fullName.charAt(0).toUpperCase() : (role === "student" ? "S" : role === "instructor" ? "I" : "A")}
                   </div>
                   <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
                 </button>
@@ -329,11 +345,24 @@ function Navbar({ page, onNavigate, dark, onDark, role, isLoggedIn, onLogout, pr
                       <div className="text-xs text-muted-foreground">{profile?.email || `${role}@courshare.io`}</div>
                     </div>
                     <div className="p-1">
-                      <button onClick={() => { onNavigate(role === "student" ? "student" : role === "instructor" ? "instructor" : "admin"); setUserOpen(false); }} className="flex items-center gap-2 w-full px-3 py-2 text-sm rounded-lg hover:bg-muted transition-colors">
-                        <LayoutDashboard className="w-4 h-4" /> Dashboard
-                      </button>
-                      <button className="flex items-center gap-2 w-full px-3 py-2 text-sm rounded-lg hover:bg-muted transition-colors">
-                        <Settings className="w-4 h-4" /> Settings
+                      {(hasRole("STUDENT") || role === "student") && (
+                        <button onClick={() => { onNavigate("student"); setUserOpen(false); }} className="flex items-center gap-2 w-full px-3 py-2 text-sm rounded-lg hover:bg-muted transition-colors">
+                          <GraduationCap className="w-4 h-4" /> My Learning
+                        </button>
+                      )}
+                      {(hasRole("INSTRUCTOR") || role === "instructor") && (
+                        <button onClick={() => { onNavigate("instructor"); setUserOpen(false); }} className="flex items-center gap-2 w-full px-3 py-2 text-sm rounded-lg hover:bg-muted transition-colors">
+                          <LayoutDashboard className="w-4 h-4" /> Instructor Dashboard
+                        </button>
+                      )}
+                      {(hasRole("ADMIN") || role === "admin") && (
+                        <button onClick={() => { onNavigate("admin"); setUserOpen(false); }} className="flex items-center gap-2 w-full px-3 py-2 text-sm rounded-lg hover:bg-muted transition-colors">
+                          <Shield className="w-4 h-4" /> Admin Panel
+                        </button>
+                      )}
+                      <div className="border-t border-border my-1" />
+                      <button onClick={() => { onNavigate("profile"); setUserOpen(false); }} className="flex items-center gap-2 w-full px-3 py-2 text-sm rounded-lg hover:bg-muted transition-colors">
+                        <User className="w-4 h-4" /> Profile & Settings
                       </button>
                       <div className="border-t border-border my-1" />
                       <button onClick={() => { onLogout(); setUserOpen(false); }} className="flex items-center gap-2 w-full px-3 py-2 text-sm rounded-lg hover:bg-red-50 dark:hover:bg-red-900/10 text-red-600 transition-colors">
@@ -756,17 +785,51 @@ function CourseDetailPage({ onNavigate, courseId }: { onNavigate: (p: Page) => v
   const [course, setCourse] = useState<Course | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [openSection, setOpenSection] = useState(0);
+  const [instName, setInstName] = useState("");
+  const [isEnrolled, setIsEnrolled] = useState(false);
 
   useEffect(() => {
     if (courseId) {
       api.getCourseDetail(courseId)
-        .then(data => setCourse(mapApiCourseToCourse(data)))
+        .then(data => {
+          const mapped = mapApiCourseToCourse(data);
+          setCourse(mapped);
+          setInstName(mapped.instructor);
+          
+          if (mapped.instructorId) {
+            api.getPublicProfile(mapped.instructorId)
+              .then(prof => {
+                if (prof && (prof.fullName || prof.email)) {
+                  setInstName(prof.fullName || prof.email);
+                }
+              })
+              .catch(() => {});
+          }
+        })
+        .catch(console.error);
+
+      api.checkEnrollment(courseId)
+        .then(res => {
+          setIsEnrolled(res.enrolled.isEnrolled);
+        })
         .catch(console.error);
     } else {
       // Fallback to first course if no courseId is provided
       api.getCourses().then(data => {
         if (data.length > 0) {
-          setCourse(mapApiCourseToCourse(data[0]));
+          const mapped = mapApiCourseToCourse(data[0]);
+          setCourse(mapped);
+          setInstName(mapped.instructor);
+
+          if (mapped.instructorId) {
+            api.getPublicProfile(mapped.instructorId)
+              .then(prof => {
+                if (prof && (prof.fullName || prof.email)) {
+                  setInstName(prof.fullName || prof.email);
+                }
+              })
+              .catch(() => {});
+          }
         }
       }).catch(console.error);
     }
@@ -808,8 +871,8 @@ function CourseDetailPage({ onNavigate, courseId }: { onNavigate: (p: Page) => v
               <span className="text-white/60 flex items-center gap-1"><BookOpen className="w-4 h-4" />{course.lessons} lessons</span>
             </div>
             <div className="flex items-center gap-3">
-              <img src={course.instructorAvatar} alt={course.instructor} className="w-9 h-9 rounded-full object-cover border-2 border-white/20" />
-              <span className="text-sm">Created by <button className="text-indigo-300 hover:underline">{course.instructor}</button></span>
+              <img src={course.instructorAvatar} alt={instName} className="w-9 h-9 rounded-full object-cover border-2 border-white/20" />
+              <span className="text-sm">Created by <button className="text-indigo-300 hover:underline">{instName}</button></span>
             </div>
             <div className="flex items-center gap-4 mt-4 text-xs text-white/50">
               <span>Last updated Dec 2024</span>
@@ -836,12 +899,20 @@ function CourseDetailPage({ onNavigate, courseId }: { onNavigate: (p: Page) => v
                   <span className="text-emerald-600 font-semibold text-sm">{Math.round((1 - course.price / course.originalPrice) * 100)}% off</span>
                 </div>
                 <p className="text-xs text-rose-500 font-medium mb-4">⏰ 2 days left at this price!</p>
-                <button onClick={() => onNavigate("checkout")} className="w-full py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-colors mb-2">
-                  Enroll Now
-                </button>
-                <button className="w-full py-3 border border-border rounded-xl font-medium hover:bg-muted transition-colors text-sm flex items-center justify-center gap-2">
-                  <ShoppingCart className="w-4 h-4" /> Add to Cart
-                </button>
+                {isEnrolled ? (
+                  <button onClick={() => onNavigate("player")} className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-colors mb-2 flex items-center justify-center gap-2">
+                    <Play className="w-4 h-4 fill-white" /> Start Learning
+                  </button>
+                ) : (
+                  <button onClick={() => onNavigate("checkout")} className="w-full py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-colors mb-2">
+                    Enroll Now
+                  </button>
+                )}
+                {!isEnrolled && (
+                  <button className="w-full py-3 border border-border rounded-xl font-medium hover:bg-muted transition-colors text-sm flex items-center justify-center gap-2">
+                    <ShoppingCart className="w-4 h-4" /> Add to Cart
+                  </button>
+                )}
                 <p className="text-xs text-center text-muted-foreground mt-3">30-Day Money-Back Guarantee</p>
                 <div className="mt-4 space-y-2">
                   {[
@@ -1140,7 +1211,12 @@ function CheckoutPage({ onNavigate, courseId }: { onNavigate: (p: Page) => void;
                 </div>
                 <div className="flex gap-3">
                   <button onClick={() => setStep(1)} className="px-5 py-3 border border-border rounded-xl font-medium hover:bg-muted transition-colors text-sm">Back</button>
-                  <button onClick={() => {
+                  <button onClick={async () => {
+                    try {
+                      await api.enrollInCourse(course.id);
+                    } catch (e) {
+                      console.error("Error writing enrollment to DB, adding locally as fallback:", e);
+                    }
                     const stored = localStorage.getItem("enrolledCourses");
                     const enrolled = stored ? JSON.parse(stored) : [];
                     if (!enrolled.includes(course.id)) {
@@ -1452,22 +1528,191 @@ function LearningPlayerPage({ onNavigate, courseId }: { onNavigate: (p: Page) =>
   );
 }
 
+// ── Profile Settings Page ──────────────────────────────────────────────────────
+function ProfilePage({ onNavigate, profile, onProfileUpdate }: { onNavigate: (p: Page) => void; profile: any; onProfileUpdate: (p: any) => void }) {
+  const [fullName, setFullName] = useState(profile?.fullName || "");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  
+  const [profileMsg, setProfileMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [passMsg, setPassMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [updatingProfile, setUpdatingProfile] = useState(false);
+  const [updatingPass, setUpdatingPass] = useState(false);
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setProfileMsg(null);
+    if (!fullName.trim()) {
+      setProfileMsg({ type: "error", text: "Full name cannot be empty" });
+      return;
+    }
+    setUpdatingProfile(true);
+    try {
+      const updated = await api.updateProfile(fullName);
+      onProfileUpdate(updated);
+      setProfileMsg({ type: "success", text: "Profile updated successfully!" });
+    } catch (err: any) {
+      setProfileMsg({ type: "error", text: err.message || "Failed to update profile" });
+    } finally {
+      setUpdatingProfile(false);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPassMsg(null);
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setPassMsg({ type: "error", text: "All fields are required" });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPassMsg({ type: "error", text: "New passwords do not match" });
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPassMsg({ type: "error", text: "Password must be at least 6 characters" });
+      return;
+    }
+    setUpdatingPass(true);
+    try {
+      await api.changePassword(currentPassword, newPassword);
+      setPassMsg({ type: "success", text: "Password changed successfully!" });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err: any) {
+      setPassMsg({ type: "error", text: err.message || "Failed to change password" });
+    } finally {
+      setUpdatingPass(false);
+    }
+  };
+
+  const formattedRoles = profile?.roles?.map((r: string) => r.replace("ROLE_", "").toLowerCase()) || [];
+
+  return (
+    <div className="min-h-screen py-12 px-4 max-w-6xl mx-auto">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
+        <button onClick={() => onNavigate("home")} className="hover:text-foreground">Home</button>
+        <ChevronRight className="w-3.5 h-3.5" />
+        <span className="text-foreground font-medium">Profile & Settings</span>
+      </div>
+
+      <h1 className="text-3xl font-bold font-display mb-8">Account Settings</h1>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="bg-card border border-border rounded-2xl p-6 flex flex-col items-center text-center shadow-sm">
+          <div className="w-24 h-24 bg-primary text-white text-3xl font-bold rounded-full flex items-center justify-center mb-4 shadow-md">
+            {profile?.fullName ? profile.fullName.charAt(0).toUpperCase() : "U"}
+          </div>
+          <h2 className="text-xl font-semibold font-display mb-1">{profile?.fullName || "User name"}</h2>
+          <p className="text-sm text-muted-foreground mb-4">{profile?.email}</p>
+          
+          <div className="flex flex-wrap gap-1.5 justify-center mb-6">
+            {formattedRoles.map((role: string) => (
+              <span key={role} className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary capitalize">
+                {role}
+              </span>
+            ))}
+          </div>
+
+          <div className="w-full border-t border-border pt-4 text-left space-y-3">
+            <div>
+              <span className="text-xs text-muted-foreground block">Account ID</span>
+              <span className="text-sm font-mono text-foreground break-all">{profile?.id}</span>
+            </div>
+            <div>
+              <span className="text-xs text-muted-foreground block">Joined Date</span>
+              <span className="text-sm text-foreground">
+                {profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : "N/A"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="lg:col-span-2 space-y-8">
+          <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
+            <h3 className="text-lg font-semibold font-display mb-4 flex items-center gap-2">
+              <User className="w-5 h-5 text-primary" /> Personal Information
+            </h3>
+            <form onSubmit={handleUpdateProfile} className="space-y-4">
+              {profileMsg && (
+                <div className={cn("p-3 rounded-lg text-sm", 
+                  profileMsg.type === "success" ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400" : "bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400"
+                )}>
+                  {profileMsg.text}
+                </div>
+              )}
+              <div>
+                <label className="text-sm font-medium block mb-1.5">Email Address (Cannot be changed)</label>
+                <input type="email" value={profile?.email || ""} disabled className="w-full px-3.5 py-2.5 bg-muted border border-border rounded-xl text-muted-foreground text-sm cursor-not-allowed focus:outline-none" />
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-1.5">Full Name</label>
+                <input type="text" value={fullName} onChange={e => setFullName(e.target.value)} className="w-full px-3.5 py-2.5 bg-input-background border border-border rounded-xl text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="Enter your full name" />
+              </div>
+              <div className="pt-2">
+                <button type="submit" disabled={updatingProfile} className="px-5 py-2.5 bg-primary text-white font-medium rounded-xl hover:bg-primary/95 transition-all text-sm shadow-sm flex items-center gap-2">
+                  {updatingProfile && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
+            <h3 className="text-lg font-semibold font-display mb-4 flex items-center gap-2">
+              <Lock className="w-5 h-5 text-primary" /> Change Password
+            </h3>
+            <form onSubmit={handleChangePassword} className="space-y-4">
+              {passMsg && (
+                <div className={cn("p-3 rounded-lg text-sm", 
+                  passMsg.type === "success" ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400" : "bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400"
+                )}>
+                  {passMsg.text}
+                </div>
+              )}
+              <div>
+                <label className="text-sm font-medium block mb-1.5">Current Password</label>
+                <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} className="w-full px-3.5 py-2.5 bg-input-background border border-border rounded-xl text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="Enter current password" />
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-1.5">New Password</label>
+                <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="w-full px-3.5 py-2.5 bg-input-background border border-border rounded-xl text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="At least 6 characters" />
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-1.5">Confirm New Password</label>
+                <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className="w-full px-3.5 py-2.5 bg-input-background border border-border rounded-xl text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="Confirm new password" />
+              </div>
+              <div className="pt-2">
+                <button type="submit" disabled={updatingPass} className="px-5 py-2.5 bg-primary text-white font-medium rounded-xl hover:bg-primary/95 transition-all text-sm shadow-sm flex items-center gap-2">
+                  {updatingPass && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>}
+                  Update Password
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Student Dashboard ──────────────────────────────────────────────────────────
 function StudentDashboardPage({ onNavigate, profile }: { onNavigate: (p: Page) => void; profile: any }) {
   const [activeTab, setActiveTab] = useState("learning");
   const [enrolledCourses, setEnrolledCourses] = useState<Course[]>([]);
 
   useEffect(() => {
-    const stored = localStorage.getItem("enrolledCourses");
-    const enrolledIds = stored ? JSON.parse(stored) : [];
-    api.getCourses().then(data => {
-      const mapped = data.map(mapApiCourseToCourse);
+    Promise.all([
+      api.getEnrollments().catch(() => ({ data: [] })),
+      api.getCourses().catch(() => [])
+    ]).then(([enrollmentsRes, coursesRes]) => {
+      const enrollments = enrollmentsRes.data || [];
+      const enrolledIds = enrollments.map((e: any) => e.courseId);
+      const mapped = coursesRes.map(mapApiCourseToCourse);
       const filtered = mapped.filter(c => enrolledIds.includes(c.id));
-      if (filtered.length === 0) {
-        setEnrolledCourses(COURSES.filter(c => c.progress !== undefined));
-      } else {
-        setEnrolledCourses(filtered.map((c, i) => ({ ...c, progress: i === 0 ? 64 : 12 })));
-      }
+      setEnrolledCourses(filtered.map((c, i) => ({ ...c, progress: i === 0 ? 64 : 12 })));
     }).catch(console.error);
   }, []);
 
@@ -2653,6 +2898,7 @@ export default function App() {
         {page === "builder" && <CourseBuilderPage onNavigate={navigate} courseId={selectedCourseId} />}
         {page === "admin" && <AdminDashboardPage />}
         {page === "auth" && <AuthPage onNavigate={navigate} onLogin={handleLogin} />}
+        {page === "profile" && <ProfilePage onNavigate={navigate} profile={profile} onProfileUpdate={(newProfile: any) => setProfile(newProfile)} />}
       </motion.div>
     </div>
   );

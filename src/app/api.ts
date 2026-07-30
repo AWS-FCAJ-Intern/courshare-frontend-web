@@ -230,6 +230,80 @@ class ApiClient {
     }
   }
 
+  async updateProfile(fullName: string): Promise<UserProfile> {
+    const res = await fetch(`${API_BASE_URL}/profile`, {
+      method: "PUT",
+      headers: this.getHeaders(true),
+      body: JSON.stringify({ fullName }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: "Failed to update profile" }));
+      throw new Error(err.message || "Failed to update profile");
+    }
+    return res.json();
+  }
+
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    const res = await fetch(`${API_BASE_URL}/profile/password`, {
+      method: "PUT",
+      headers: this.getHeaders(true),
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: "Failed to change password" }));
+      throw new Error(err.message || "Failed to change password");
+    }
+  }
+
+  async getPublicProfile(userId: string): Promise<{ id: string; email: string; fullName: string }> {
+    const res = await fetch(`${API_BASE_URL}/profile/public/${userId}`, {
+      method: "GET",
+      headers: this.getHeaders(),
+    });
+    if (!res.ok) {
+      throw new Error("Failed to fetch public profile");
+    }
+    return res.json();
+  }
+
+  async getEnrollments(): Promise<{ data: any[] }> {
+    const res = await fetch(`${API_BASE_URL}/enrollments/me`, {
+      method: "GET",
+      headers: this.getHeaders(true),
+    });
+    if (!res.ok) {
+      if (res.status === 404) {
+        return { data: [] };
+      }
+      throw new Error("Failed to fetch enrollments");
+    }
+    return res.json();
+  }
+
+  async checkEnrollment(courseId: string): Promise<{ enrolled: { isEnrolled: boolean } }> {
+    const res = await fetch(`${API_BASE_URL}/enrollments/${courseId}/check`, {
+      method: "GET",
+      headers: this.getHeaders(true),
+    });
+    if (!res.ok) {
+      return { enrolled: { isEnrolled: false } };
+    }
+    return res.json();
+  }
+
+  async enrollInCourse(courseId: string): Promise<any> {
+    const res = await fetch(`${API_BASE_URL}/enrollments`, {
+      method: "POST",
+      headers: this.getHeaders(true),
+      body: JSON.stringify({ courseId }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: "Failed to enroll" }));
+      throw new Error(err.message || "Failed to enroll");
+    }
+    return res.json();
+  }
+
   logout() {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
