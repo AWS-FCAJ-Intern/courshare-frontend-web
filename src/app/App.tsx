@@ -2759,7 +2759,7 @@ function AuthPage({ onNavigate, onLogin }: { onNavigate: (p: Page) => void; onLo
           </div> */}
 
           {/* Social login */}
-          <div className="flex gap-3 mb-6">
+          {/* <div className="flex gap-3 mb-6">
             {[{ name: "Google", color: "text-red-500" }, { name: "GitHub", color: "text-foreground" }].map(s => (
               <button key={s.name} className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-border rounded-xl text-sm hover:bg-muted transition-colors font-medium">
                 <Globe className={cn("w-4 h-4", s.color)} /> {s.name}
@@ -2770,7 +2770,7 @@ function AuthPage({ onNavigate, onLogin }: { onNavigate: (p: Page) => void; onLo
             <div className="flex-1 h-px bg-border" />
             <span className="text-xs text-muted-foreground">or continue with email</span>
             <div className="flex-1 h-px bg-border" />
-          </div>
+          </div> */}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === "register" && (
