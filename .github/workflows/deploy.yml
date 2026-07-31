@@ -22,20 +22,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
 
-      # Cài đặt pnpm trên GitHub Actions runner
-      - name: Install pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8 # Hoặc phiên bản pnpm bạn đang dùng dưới máy
-
-      # Cài đặt các thư viện bằng pnpm (tự động xử lý đa nền tảng cho esbuild)
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: npm ci
 
-      # Build ứng dụng frontend
       - name: Build frontend
-        run: pnpm build
+        run: npm run build
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -47,7 +40,6 @@ jobs:
       - name: Upload to S3
         run: |
           aws s3 sync dist/ s3://${{ env.S3_BUCKET }} --delete
-
       - name: Invalidate CloudFront cache
         run: |
           aws cloudfront create-invalidation \
