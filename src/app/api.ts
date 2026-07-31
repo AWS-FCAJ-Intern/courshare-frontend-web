@@ -154,13 +154,16 @@ class ApiClient {
     return res.json();
   }
 
-  async getCourses(params?: { categoryId?: string; search?: string }): Promise<ApiCourse[]> {
+  async getCourses(params?: { categoryId?: string; search?: string; instructorId?: string }): Promise<ApiCourse[]> {
     const url = new URL(`${API_BASE_URL}/courses`);
     if (params?.categoryId && params.categoryId !== "All") {
       url.searchParams.append("categoryId", params.categoryId);
     }
     if (params?.search) {
       url.searchParams.append("search", params.search);
+    }
+    if (params?.instructorId) {
+      url.searchParams.append("instructorId", params.instructorId);
     }
     const res = await fetch(url.toString(), {
       method: "GET",

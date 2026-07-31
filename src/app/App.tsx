@@ -1875,10 +1875,10 @@ function InstructorPortalPage({ onNavigate, onSelectCourse, profile }: { onNavig
   const [loading, setLoading] = useState(false);
 
   const fetchCourses = () => {
-    api.getCourses().then(data => {
+    if (!profile) return;
+    api.getCourses({ instructorId: profile.id }).then(data => {
       const mapped = data.map(mapApiCourseToCourse);
-      const filtered = profile ? mapped.filter(c => c.instructorId === profile.id) : mapped;
-      setCourses(filtered);
+      setCourses(mapped);
     }).catch(console.error);
   };
 
@@ -2894,7 +2894,7 @@ export default function App() {
         {page === "checkout" && <CheckoutPage onNavigate={navigate} courseId={selectedCourseId} />}
         {page === "player" && <LearningPlayerPage onNavigate={navigate} courseId={selectedCourseId} />}
         {page === "student" && <StudentDashboardPage onNavigate={navigate} profile={profile} />}
-        {page === "instructor" && <InstructorPortalPage onNavigate={navigate} onSelectCourse={setSelectedCourseId} />}
+        {page === "instructor" && <InstructorPortalPage onNavigate={navigate} onSelectCourse={setSelectedCourseId} profile={profile} />}
         {page === "builder" && <CourseBuilderPage onNavigate={navigate} courseId={selectedCourseId} />}
         {page === "admin" && <AdminDashboardPage />}
         {page === "auth" && <AuthPage onNavigate={navigate} onLogin={handleLogin} />}
