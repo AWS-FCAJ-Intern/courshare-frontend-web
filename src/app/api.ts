@@ -258,7 +258,7 @@ class ApiClient {
   async getPublicProfile(userId: string): Promise<{ id: string; email: string; fullName: string }> {
     const res = await fetch(`${API_BASE_URL}/profile/public/${userId}`, {
       method: "GET",
-      headers: this.getHeaders(),
+      headers: this.getHeaders(true),
     });
     if (!res.ok) {
       throw new Error("Failed to fetch public profile");
