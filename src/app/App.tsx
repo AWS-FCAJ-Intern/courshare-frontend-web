@@ -2745,7 +2745,7 @@ function AuthPage({ onNavigate, onLogin }: { onNavigate: (p: Page) => void; onLo
             </button>
           </p>
 
-          {/* Role picker */}
+          {/* Role picker
           <div className="mb-6">
             <label className="text-sm font-medium block mb-2">I am joining as</label>
             <div className="grid grid-cols-3 gap-2">
@@ -2756,7 +2756,7 @@ function AuthPage({ onNavigate, onLogin }: { onNavigate: (p: Page) => void; onLo
                   )}>{r}</button>
               ))}
             </div>
-          </div>
+          </div> */}
 
           {/* Social login */}
           <div className="flex gap-3 mb-6">
