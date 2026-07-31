@@ -105,6 +105,7 @@ class ApiClient {
       method: "GET",
       headers: this.getHeaders(true),
     });
+    console.log("getProfile response:", res);
     if (!res.ok) {
       throw new Error("Failed to fetch profile");
     }
