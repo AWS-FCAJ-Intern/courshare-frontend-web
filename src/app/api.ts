@@ -11,6 +11,9 @@ export interface AuthResponse {
   accessToken: string;
   refreshToken: string;
   expiresIn: number;
+  idToken?: string;
+  id_token?: string;
+  IdToken?: string;
 }
 
 export interface ApiCategory {
@@ -61,7 +64,15 @@ class ApiClient {
     };
     if (authRequired) {
       const token = localStorage.getItem("accessToken");
+      console.log(
+        "[API] getHeaders authRequired=true.",
+        "Token present:",
+        !!token,
+        token ? `(length: ${token.length}, starts with: ${token.substring(0, 15)}...)` : ""
+      );
       if (token) {
+        // If your Cognito/API Gateway authorizer expects the raw token without "Bearer ",
+        // you can change this line to: headers["Authorization"] = token;
         headers["Authorization"] = `Bearer ${token}`;
       }
     }
@@ -79,8 +90,18 @@ class ApiClient {
       throw new Error(err.message || "Login failed");
     }
     const data: AuthResponse = await res.json();
-    localStorage.setItem("accessToken", data.accessToken);
-    localStorage.setItem("refreshToken", data.refreshToken);
+    console.log("[API] Login raw response:", data);
+    
+    // API Gateway / Cognito typically requires ID Token for user attributes
+    const token = data.idToken || data.id_token || data.IdToken || data.accessToken || data.access_token;
+    console.log("[API] Using token:", token === data.accessToken ? "accessToken" : "idToken");
+    
+    if (token) {
+      localStorage.setItem("accessToken", token);
+    }
+    if (data.refreshToken || data.refresh_token) {
+      localStorage.setItem("refreshToken", data.refreshToken || data.refresh_token || "");
+    }
     return data;
   }
 
@@ -95,8 +116,15 @@ class ApiClient {
       throw new Error(err.message || "Registration failed");
     }
     const data: AuthResponse = await res.json();
-    localStorage.setItem("accessToken", data.accessToken);
-    localStorage.setItem("refreshToken", data.refreshToken);
+    console.log("[API] Register raw response:", data);
+    
+    const token = data.idToken || data.id_token || data.IdToken || data.accessToken || data.access_token;
+    if (token) {
+      localStorage.setItem("accessToken", token);
+    }
+    if (data.refreshToken || data.refresh_token) {
+      localStorage.setItem("refreshToken", data.refreshToken || data.refresh_token || "");
+    }
     return data;
   }
 
@@ -105,9 +133,12 @@ class ApiClient {
       method: "GET",
       headers: this.getHeaders(true),
     });
-    console.log("getProfile response:", res);
+    console.log("[API] getProfile response:", res);
     if (!res.ok) {
-      throw new Error("Failed to fetch profile");
+      const errorBody = await res.text().catch(() => "");
+      console.error("[API] getProfile error body:", errorBody);
+      console.error("[API] getProfile response headers:", [...res.headers.entries()]);
+      throw new Error(`Failed to fetch profile (Status ${res.status}): ${errorBody || "Unknown Error"}`);
     }
     return res.json();
   }
