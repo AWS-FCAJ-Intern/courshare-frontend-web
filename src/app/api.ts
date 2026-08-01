@@ -316,6 +316,7 @@ class ApiClient {
   }
 
   async checkEnrollment(courseId: string): Promise<{ enrolled: { isEnrolled: boolean } }> {
+    console.log("[API] checkEnrollment called for courseId:", courseId);
     const res = await fetch(`${API_BASE_URL}/enrollments/${courseId}/check`, {
       method: "GET",
       headers: this.getHeaders(true),

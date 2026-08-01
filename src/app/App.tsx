@@ -241,7 +241,7 @@ function CourseCard({ course, onNavigate, onSelectCourse }: { course: Course; on
             setInstName(prof.fullName || prof.email);
           }
         })
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [course.instructorId]);
 
@@ -258,7 +258,7 @@ function CourseCard({ course, onNavigate, onSelectCourse }: { course: Course; on
         {course.badge && (
           <span className={cn("absolute top-2 left-2 px-2 py-0.5 rounded-md text-xs font-bold",
             course.badge === "Bestseller" ? "bg-amber-400 text-amber-900" :
-            course.badge === "Hot" ? "bg-rose-500 text-white" : "bg-emerald-500 text-white"
+              course.badge === "Hot" ? "bg-rose-500 text-white" : "bg-emerald-500 text-white"
           )}>{course.badge}</span>
         )}
         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -753,7 +753,7 @@ function CourseCatalogPage({ onNavigate, onSelectCourse }: { onNavigate: (p: Pag
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-1 border border-border rounded-lg p-0.5">
                   <button onClick={() => setView("grid")} className={cn("p-1.5 rounded-md transition-colors", view === "grid" ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground")}>
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 16 16"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 16 16"><rect x="1" y="1" width="6" height="6" rx="1" /><rect x="9" y="1" width="6" height="6" rx="1" /><rect x="1" y="9" width="6" height="6" rx="1" /><rect x="9" y="9" width="6" height="6" rx="1" /></svg>
                   </button>
                   <button onClick={() => setView("list")} className={cn("p-1.5 rounded-md transition-colors", view === "list" ? "bg-primary text-white" : "text-muted-foreground hover:text-foreground")}>
                     <List className="w-4 h-4" />
@@ -850,7 +850,7 @@ function CourseDetailPage({ onNavigate, courseId }: { onNavigate: (p: Page) => v
           const mapped = mapApiCourseToCourse(data);
           setCourse(mapped);
           setInstName(mapped.instructor);
-          
+
           if (mapped.instructorId) {
             api.getPublicProfile(mapped.instructorId)
               .then(prof => {
@@ -858,7 +858,7 @@ function CourseDetailPage({ onNavigate, courseId }: { onNavigate: (p: Page) => v
                   setInstName(prof.fullName || prof.email);
                 }
               })
-              .catch(() => {});
+              .catch(() => { });
           }
         })
         .catch(console.error);
@@ -883,7 +883,7 @@ function CourseDetailPage({ onNavigate, courseId }: { onNavigate: (p: Page) => v
                   setInstName(prof.fullName || prof.email);
                 }
               })
-              .catch(() => {});
+              .catch(() => { });
           }
         }
       }).catch(console.error);
@@ -959,8 +959,8 @@ function CourseDetailPage({ onNavigate, courseId }: { onNavigate: (p: Page) => v
                     <Play className="w-4 h-4 fill-white" /> Start Learning
                   </button>
                 ) : (
-                  <button 
-                    onClick={handleEnroll} 
+                  <button
+                    onClick={handleEnroll}
                     disabled={isCheckingOut}
                     className="w-full py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-colors mb-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
@@ -1408,7 +1408,7 @@ function ProfilePage({ onNavigate, profile, onProfileUpdate }: { onNavigate: (p:
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  
+
   const [profileMsg, setProfileMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [passMsg, setPassMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [updatingProfile, setUpdatingProfile] = useState(false);
@@ -1481,7 +1481,7 @@ function ProfilePage({ onNavigate, profile, onProfileUpdate }: { onNavigate: (p:
           </div>
           <h2 className="text-xl font-semibold font-display mb-1">{profile?.fullName || "User name"}</h2>
           <p className="text-sm text-muted-foreground mb-4">{profile?.email}</p>
-          
+
           <div className="flex flex-wrap gap-1.5 justify-center mb-6">
             {formattedRoles.map((role: string) => (
               <span key={role} className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary capitalize">
@@ -1511,7 +1511,7 @@ function ProfilePage({ onNavigate, profile, onProfileUpdate }: { onNavigate: (p:
             </h3>
             <form onSubmit={handleUpdateProfile} className="space-y-4">
               {profileMsg && (
-                <div className={cn("p-3 rounded-lg text-sm", 
+                <div className={cn("p-3 rounded-lg text-sm",
                   profileMsg.type === "success" ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400" : "bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400"
                 )}>
                   {profileMsg.text}
@@ -1540,7 +1540,7 @@ function ProfilePage({ onNavigate, profile, onProfileUpdate }: { onNavigate: (p:
             </h3>
             <form onSubmit={handleChangePassword} className="space-y-4">
               {passMsg && (
-                <div className={cn("p-3 rounded-lg text-sm", 
+                <div className={cn("p-3 rounded-lg text-sm",
                   passMsg.type === "success" ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400" : "bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400"
                 )}>
                   {passMsg.text}
@@ -1825,7 +1825,7 @@ function InstructorPortalPage({ onNavigate, onSelectCourse, profile }: { onNavig
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <StatCard icon={DollarSign} label="Total Revenue" value={`$${totalRevenue.toLocaleString(undefined, {maximumFractionDigits:0})}`} sub="From active courses" color="text-emerald-600" bg="bg-emerald-100 dark:bg-emerald-900/30" />
+          <StatCard icon={DollarSign} label="Total Revenue" value={`$${totalRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} sub="From active courses" color="text-emerald-600" bg="bg-emerald-100 dark:bg-emerald-900/30" />
           <StatCard icon={Users} label="Total Students" value={totalStudents.toLocaleString()} sub="Enrolled learners" color="text-primary" bg="bg-primary/10" />
           <StatCard icon={BookOpen} label="Published Courses" value={publishedCourses.toString()} sub={`${courses.length - publishedCourses} in draft`} color="text-violet-600" bg="bg-violet-100 dark:bg-violet-900/30" />
           <StatCard icon={Star} label="Average Rating" value={avgRating} sub="Average rating" color="text-amber-600" bg="bg-amber-100 dark:bg-amber-900/30" />
@@ -1975,7 +1975,7 @@ function InstructorPortalPage({ onNavigate, onSelectCourse, profile }: { onNavig
               <h3 className="font-semibold font-display mb-4">Recent Reviews</h3>
               <div className="space-y-3">
                 {[{ user: "L. Foster", text: "Absolutely excellent course!", rating: 5, time: "2h ago" },
-                  { user: "A. Patel", text: "TypeScript section is gold.", rating: 5, time: "1d ago" }].map(r => (
+                { user: "A. Patel", text: "TypeScript section is gold.", rating: 5, time: "1d ago" }].map(r => (
                   <div key={r.user} className="text-xs border-b border-border pb-3 last:border-0 last:pb-0">
                     <div className="flex items-center justify-between mb-1">
                       <span className="font-medium">{r.user}</span>
@@ -2298,7 +2298,7 @@ function CourseBuilderPage({ onNavigate, courseId }: { onNavigate: (p: Page) => 
                         <h4 className="text-xs font-bold">New Lesson</h4>
                         <input value={lessonTitle} onChange={e => setLessonTitle(e.target.value)} required placeholder="Lesson title (e.g. Introduction to components)" className="w-full px-3 py-1.5 border border-border rounded-lg text-xs bg-input-background focus:outline-none" />
                         <input value={lessonDesc} onChange={e => setLessonDesc(e.target.value)} placeholder="Short description (optional)" className="w-full px-3 py-1.5 border border-border rounded-lg text-xs bg-input-background focus:outline-none" />
-                        
+
                         <div>
                           <label className="text-[10px] font-bold block mb-1 text-muted-foreground uppercase tracking-wider">Lesson Type</label>
                           <select value={lessonType} onChange={e => setLessonType(e.target.value)} className="w-full px-3 py-1.5 border border-border rounded-lg text-xs bg-input-background focus:outline-none">
@@ -2589,7 +2589,7 @@ function AdminDashboardPage() {
               <span className="text-xs text-muted-foreground">Showing 5 of 52,480 users</span>
               <div className="flex items-center gap-1">
                 <button className="p-1.5 rounded-lg border border-border hover:bg-muted text-muted-foreground transition-colors"><ChevronLeft className="w-3.5 h-3.5" /></button>
-                {[1,2,3].map(p => <button key={p} className={cn("w-7 h-7 rounded-lg text-xs font-medium transition-colors", p === 1 ? "bg-primary text-white" : "border border-border hover:bg-muted text-muted-foreground")}>{p}</button>)}
+                {[1, 2, 3].map(p => <button key={p} className={cn("w-7 h-7 rounded-lg text-xs font-medium transition-colors", p === 1 ? "bg-primary text-white" : "border border-border hover:bg-muted text-muted-foreground")}>{p}</button>)}
                 <button className="p-1.5 rounded-lg border border-border hover:bg-muted text-muted-foreground transition-colors"><ChevronRight className="w-3.5 h-3.5" /></button>
               </div>
             </div>
@@ -2854,18 +2854,18 @@ export default function App() {
     const success = params.get("success");
     const canceled = params.get("canceled");
     const courseId = params.get("courseId");
-    
+
     // Support both query param success=true and pathnames /payment/success
     const isSuccess = pathname.includes("/payment/success") || success === "true";
     const isCanceled = pathname.includes("/payment/cancel") || canceled === "true";
-    
+
     // Support session_id from backend redirect URL (Stripe session id is appended by Stripe)
     const stripeSessionId = params.get("stripeSessionId") || params.get("session_id");
 
     if (isSuccess) {
       // Clear query parameters and path from URL (reset to base path /)
       window.history.replaceState({}, document.title, "/");
-      
+
       const proceedEnrollment = (cId: string | null) => {
         if (cId) {
           setSelectedCourseId(cId);
