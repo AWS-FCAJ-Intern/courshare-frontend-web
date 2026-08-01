@@ -45,6 +45,7 @@
     "cmdk": "1.1.1",
     "date-fns": "3.6.0",
     "embla-carousel-react": "8.6.0",
+    "hls.js": "^1.6.16",
     "input-otp": "1.4.2",
     "lucide-react": "0.487.0",
     "motion": "12.23.24",
@@ -71,14 +72,14 @@
     "vite": "6.3.5"
   },
   "optionalDependencies": {
-    "@esbuild/win32-x64": "^0.25.12",
     "@esbuild/linux-x64": "^0.25.12",
-    "@rollup/rollup-win32-x64-msvc": "^4.62.2",
+    "@esbuild/win32-x64": "^0.25.12",
     "@rollup/rollup-linux-x64-musl": "^4.62.2",
-    "@tailwindcss/oxide-win32-x64-msvc": "^4.1.12",
+    "@rollup/rollup-win32-x64-msvc": "^4.62.2",
     "@tailwindcss/oxide-linux-x64-musl": "^4.1.12",
-    "lightningcss-win32-x64-msvc": "^1.32.0",
-    "lightningcss-linux-x64-musl": "^1.32.0"
+    "@tailwindcss/oxide-win32-x64-msvc": "^4.1.12",
+    "lightningcss-linux-x64-musl": "^1.32.0",
+    "lightningcss-win32-x64-msvc": "^1.32.0"
   },
   "peerDependencies": {
     "react": "18.3.1",
@@ -97,9 +98,21 @@
       "vite": "6.3.5"
     },
     "supportedArchitectures": {
-      "os": ["current", "win32", "linux"],
-      "cpu": ["current", "x64", "arm64"],
-      "libc": ["current", "glibc", "musl"]
+      "os": [
+        "current",
+        "win32",
+        "linux"
+      ],
+      "cpu": [
+        "current",
+        "x64",
+        "arm64"
+      ],
+      "libc": [
+        "current",
+        "glibc",
+        "musl"
+      ]
     }
   }
 }

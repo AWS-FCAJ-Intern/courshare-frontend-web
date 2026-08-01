@@ -1,5 +1,35 @@
 import { useState, useRef, useEffect } from "react";
+import Hls from "hls.js";
 import { api } from "./api";
+
+export function HlsVideoPlayer({ src }: { src: string }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (Hls.isSupported()) {
+      const hls = new Hls();
+      hls.loadSource(src);
+      hls.attachMedia(video);
+      return () => {
+        hls.destroy();
+      };
+    } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+      video.src = src;
+    }
+  }, [src]);
+
+  return (
+    <video
+      ref={videoRef}
+      controls
+      className="w-full h-full object-contain"
+    />
+  );
+}
+
 import {
   BookOpen, Search, Bell, User, Star, Clock, Users, Play,
   Award, TrendingUp, DollarSign, Settings, LogOut, Menu, X,
@@ -143,7 +173,8 @@ function cn(...classes: (string | undefined | false | null)[]) {
   return classes.filter(Boolean).join(" ");
 }
 
-function formatK(n: number) {
+function formatK(n: number | null | undefined) {
+  if (n === null || n === undefined) return "0";
   return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : n.toString();
 }
 
@@ -1360,10 +1391,8 @@ function LearningPlayerPage({ onNavigate, courseId }: { onNavigate: (p: Page) =>
                     );
                   }
                   return (
-                    <video
+                    <HlsVideoPlayer
                       src={currentLesson.videoUrl}
-                      controls
-                      className="w-full h-full object-contain"
                     />
                   );
                 })()
@@ -1874,17 +1903,35 @@ function InstructorPortalPage({ onNavigate, onSelectCourse, profile }: { onNavig
   const [price, setPrice] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const [summary, setSummary] = useState<any>(null);
+
   const fetchCourses = () => {
     if (!profile) return;
-    api.getCourses({ instructorId: profile.id }).then(data => {
+    api.getCourses({ instructorId: profile.id }).then(async data => {
       const mapped = data.map(mapApiCourseToCourse);
-      setCourses(mapped);
+      const withStats = await Promise.all(mapped.map(async c => {
+        try {
+          const stats = await api.getCourseStats(c.id);
+          return {
+            ...c,
+            students: stats.enrolledStudents,
+            revenue: stats.revenue,
+            rating: stats.rating > 0 ? stats.rating : 4.8
+          };
+        } catch (e) {
+          return { ...c, students: 0, revenue: 0, rating: 4.8 };
+        }
+      }));
+      setCourses(withStats);
     }).catch(console.error);
   };
 
   useEffect(() => {
     fetchCourses();
     api.getCategories().then(setCategories).catch(console.error);
+    if (profile) {
+      api.getInstructorSummary().then(setSummary).catch(console.error);
+    }
   }, [profile]);
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -1910,12 +1957,12 @@ function InstructorPortalPage({ onNavigate, onSelectCourse, profile }: { onNavig
 
   const myCourses = courses;
 
-  const totalRevenue = courses.reduce((sum, c) => sum + (c.price * 12.5), 0); // Mock dynamic revenue calculation from database price
-  const totalStudents = courses.reduce((sum, c) => sum + (c.students || 0), 0);
+  const totalRevenue = summary ? summary.totalRevenue : courses.reduce((sum, c) => sum + (c.revenue || 0), 0);
+  const totalStudents = summary ? summary.totalStudents : courses.reduce((sum, c) => sum + (c.students || 0), 0);
   const publishedCourses = courses.filter(c => c.published).length;
-  const avgRating = courses.length > 0
+  const avgRating = summary && summary.avgRating ? summary.avgRating.toFixed(2) : (courses.length > 0
     ? (courses.reduce((sum, c) => sum + (c.rating || 0), 0) / courses.length).toFixed(2)
-    : "0.00";
+    : "0.00");
 
   return (
     <div className="min-h-screen">
@@ -2007,7 +2054,7 @@ function InstructorPortalPage({ onNavigate, onSelectCourse, profile }: { onNavig
                             </div>
                           </td>
                           <td className="px-4 py-3 text-right text-xs">{formatK(c.students)}</td>
-                          <td className="px-4 py-3 text-right text-xs font-medium">${c.price}</td>
+                          <td className="px-4 py-3 text-right text-xs font-medium">${c.revenue !== undefined ? c.revenue.toLocaleString() : c.price}</td>
                           <td className="px-4 py-3 text-right"><div className="flex items-center justify-end gap-1 text-xs"><Star className="w-3 h-3 fill-amber-400 text-amber-400" />{c.rating}</div></td>
                           <td className="px-4 py-3 text-right"><Badge variant={c.published ? "success" : "warning"}>{c.published ? "Published" : "Draft"}</Badge></td>
                           <td className="px-4 py-3 text-right">
@@ -2158,17 +2205,73 @@ function CourseBuilderPage({ onNavigate, courseId }: { onNavigate: (p: Page) => 
   const [lessonMediaUrl, setLessonMediaUrl] = useState("");
   const [lessonContent, setLessonContent] = useState("");
   const [loading, setLoading] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+
+  // States cho việc chỉnh sửa khóa học
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editCategoryId, setEditCategoryId] = useState("");
+  const [editPrice, setEditPrice] = useState("");
+  const [categories, setCategories] = useState<any[]>([]);
 
   const fetchCourseDetails = () => {
     if (!courseId) return;
     api.getCourseDetail(courseId)
-      .then(setCourse)
+      .then(data => {
+        setCourse(data);
+        setEditTitle(data.title || "");
+        setEditDescription(data.description || "");
+        setEditCategoryId(data.categoryId || "");
+        setEditPrice(data.price ? String(data.price) : "");
+      })
       .catch(console.error);
   };
 
   useEffect(() => {
     fetchCourseDetails();
+    api.getCategories().then(setCategories).catch(console.error);
   }, [courseId]);
+
+  const handleVideoUpload = async (file: File) => {
+    setUploadingVideo(true);
+    try {
+      const { uploadUrl, videoUrl } = await api.getPresignedUrl(file.name, file.type);
+      const res = await fetch(uploadUrl, {
+        method: "PUT",
+        body: file,
+        headers: {
+          "Content-Type": file.type
+        }
+      });
+      if (!res.ok) {
+        throw new Error("Failed to upload file to S3");
+      }
+      setLessonVideo(videoUrl);
+      alert("Video uploaded successfully! It is now being processed on AWS.");
+    } catch (err: any) {
+      alert(err.message || "Failed to upload video");
+      setVideoFile(null);
+    } finally {
+      setUploadingVideo(false);
+    }
+  };
+
+  const handleUpdateCourse = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editTitle.trim()) return;
+    setLoading(true);
+    try {
+      await api.updateCourse(courseId, editTitle, editDescription, editCategoryId || null, parseFloat(editPrice) || 0);
+      setIsEditModalOpen(false);
+      fetchCourseDetails();
+    } catch (err: any) {
+      alert(err.message || "Failed to update course");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAddSection = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -2266,7 +2369,7 @@ function CourseBuilderPage({ onNavigate, courseId }: { onNavigate: (p: Page) => 
 
         {/* Course Header Summary */}
         <div className="bg-card border border-border rounded-2xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
+          <div className="flex-1">
             <h1 className="text-2xl font-bold font-display">{course.title}</h1>
             <p className="text-muted-foreground text-sm mt-1">{course.description || "No description provided."}</p>
             <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
@@ -2274,6 +2377,9 @@ function CourseBuilderPage({ onNavigate, courseId }: { onNavigate: (p: Page) => 
               <span>Category: <strong>{course.categoryName || "Unassigned"}</strong></span>
             </div>
           </div>
+          <button onClick={() => setIsEditModalOpen(true)} className="flex items-center gap-1.5 px-4 py-2 border border-border rounded-xl text-xs font-semibold hover:bg-muted transition-colors">
+            <Edit className="w-3.5 h-3.5" /> Edit Settings
+          </button>
         </div>
 
         {/* Builder Content */}
@@ -2351,7 +2457,7 @@ function CourseBuilderPage({ onNavigate, courseId }: { onNavigate: (p: Page) => 
                         <div>
                           <label className="text-[10px] font-bold block mb-1 text-muted-foreground uppercase tracking-wider">Lesson Type</label>
                           <select value={lessonType} onChange={e => setLessonType(e.target.value)} className="w-full px-3 py-1.5 border border-border rounded-lg text-xs bg-input-background focus:outline-none">
-                            <option value="VIDEO">Video Lecture (YouTube)</option>
+                            <option value="VIDEO">Video Lecture (Upload MP4)</option>
                             <option value="TEXT">Text Reader (Markdown)</option>
                             <option value="IMAGE">Image Display</option>
                             <option value="DOCUMENT">Document (PDF/Link)</option>
@@ -2359,7 +2465,22 @@ function CourseBuilderPage({ onNavigate, courseId }: { onNavigate: (p: Page) => 
                         </div>
 
                         {lessonType === "VIDEO" && (
-                          <input value={lessonVideo} onChange={e => setLessonVideo(e.target.value)} placeholder="Video URL (e.g. https://www.youtube.com/watch?v=...)" className="w-full px-3 py-1.5 border border-border rounded-lg text-xs bg-input-background focus:outline-none" />
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-bold block text-muted-foreground uppercase tracking-wider">Upload Video (.mp4)</label>
+                            <input type="file" accept="video/mp4" onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                setVideoFile(file);
+                                handleVideoUpload(file);
+                              }
+                            }} disabled={uploadingVideo} className="w-full text-xs" />
+                            {uploadingVideo && (
+                              <div className="text-[10px] text-primary animate-pulse font-medium">Uploading video directly to AWS S3... Please wait...</div>
+                            )}
+                            {lessonVideo && !uploadingVideo && (
+                              <div className="text-[10px] text-emerald-500 font-medium truncate">Uploaded S3: {lessonVideo}</div>
+                            )}
+                          </div>
                         )}
 
                         {(lessonType === "IMAGE" || lessonType === "DOCUMENT") && (
@@ -2388,6 +2509,46 @@ function CourseBuilderPage({ onNavigate, courseId }: { onNavigate: (p: Page) => 
             )}
           </div>
         </div>
+        {/* Edit Course Modal */}
+        {isEditModalOpen && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-card border border-border w-full max-w-lg rounded-2xl shadow-xl overflow-hidden">
+              <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-muted/30">
+                <h3 className="font-bold text-sm font-display flex items-center gap-2"><Edit className="w-4 h-4 text-primary" /> Edit Course Settings</h3>
+                <button onClick={() => setIsEditModalOpen(false)} className="p-1 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"><X className="w-4 h-4" /></button>
+              </div>
+              <form onSubmit={handleUpdateCourse} className="p-6 space-y-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Course Title</label>
+                  <input value={editTitle} onChange={e => setEditTitle(e.target.value)} required placeholder="e.g. Advanced Java Concurrency" className="w-full px-3.5 py-2 border border-border rounded-xl text-xs bg-input-background focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Description</label>
+                  <textarea value={editDescription} onChange={e => setEditDescription(e.target.value)} rows={4} placeholder="What will students learn in this course?" className="w-full px-3.5 py-2 border border-border rounded-xl text-xs bg-input-background focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Category</label>
+                    <select value={editCategoryId} onChange={e => setEditCategoryId(e.target.value)} className="w-full px-3.5 py-2 border border-border rounded-xl text-xs bg-input-background focus:outline-none focus:ring-2 focus:ring-primary/20">
+                      <option value="">Select Category</option>
+                      {categories.map(cat => (
+                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Price ($)</label>
+                    <input type="number" step="0.01" value={editPrice} onChange={e => setEditPrice(e.target.value)} required placeholder="e.g. 49.99" className="w-full px-3.5 py-2 border border-border rounded-xl text-xs bg-input-background focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2 pt-2 text-xs">
+                  <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 border border-border rounded-xl hover:bg-muted font-semibold transition-colors">Cancel</button>
+                  <button type="submit" disabled={loading} className="px-4 py-2 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-colors shadow-md">{loading ? "Saving..." : "Save Changes"}</button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
       </div>
     </div>
   );

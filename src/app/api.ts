@@ -339,6 +339,51 @@ class ApiClient {
     return res.json();
   }
 
+  async updateCourse(id: string, title: string, description: string, categoryId: string | null, price: number): Promise<any> {
+    const res = await fetch(`${API_BASE_URL}/courses/${id}`, {
+      method: "PUT",
+      headers: this.getHeaders(true),
+      body: JSON.stringify({ title, description, categoryId, price }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: "Failed to update course" }));
+      throw new Error(err.message || "Failed to update course");
+    }
+    return res.json();
+  }
+
+
+
+  async getCourseStats(id: string): Promise<{ enrolledStudents: number; revenue: number; rating: number }> {
+    const res = await fetch(`${API_BASE_URL}/courses/${id}/stats`, {
+      method: "GET",
+      headers: this.getHeaders(true),
+    });
+    if (!res.ok) throw new Error("Failed to get course stats");
+    return res.json();
+  }
+
+  async getInstructorSummary(): Promise<{ totalCourses: number; totalStudents: number; totalRevenue: number; avgRating: number }> {
+    const res = await fetch(`${API_BASE_URL}/instructor/summary`, {
+      method: "GET",
+      headers: this.getHeaders(true),
+    });
+    if (!res.ok) throw new Error("Failed to get instructor summary");
+    return res.json();
+  }
+
+  async getPresignedUrl(fileName: string, contentType: string): Promise<{ uploadUrl: string; videoUrl: string }> {
+    const url = new URL(`${API_BASE_URL}/courses/presigned-url`);
+    url.searchParams.append("fileName", fileName);
+    url.searchParams.append("contentType", contentType);
+    const res = await fetch(url.toString(), {
+      method: "GET",
+      headers: this.getHeaders(true),
+    });
+    if (!res.ok) throw new Error("Failed to generate presigned URL");
+    return res.json();
+  }
+
   logout() {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
