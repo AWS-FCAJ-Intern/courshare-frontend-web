@@ -93,14 +93,14 @@ class ApiClient {
     console.log("[API] Login raw response:", data);
     
     // API Gateway / Cognito typically requires ID Token for user attributes
-    const token = data.idToken || data.id_token || data.IdToken || data.accessToken || data.access_token;
+    const token = data.idToken || data.id_token || data.IdToken || data.accessToken || data.accessToken;
     console.log("[API] Using token:", token === data.accessToken ? "accessToken" : "idToken");
     
     if (token) {
       localStorage.setItem("accessToken", token);
     }
-    if (data.refreshToken || data.refresh_token) {
-      localStorage.setItem("refreshToken", data.refreshToken || data.refresh_token || "");
+    if (data.refreshToken || data.refreshToken) {
+      localStorage.setItem("refreshToken", data.refreshToken || data.refreshToken || "");
     }
     return data;
   }
@@ -118,12 +118,12 @@ class ApiClient {
     const data: AuthResponse = await res.json();
     console.log("[API] Register raw response:", data);
     
-    const token = data.idToken || data.id_token || data.IdToken || data.accessToken || data.access_token;
+    const token = data.idToken || data.id_token || data.IdToken || data.accessToken || data.accessToken;
     if (token) {
       localStorage.setItem("accessToken", token);
     }
-    if (data.refreshToken || data.refresh_token) {
-      localStorage.setItem("refreshToken", data.refreshToken || data.refresh_token || "");
+    if (data.refreshToken || data.refreshToken) {
+      localStorage.setItem("refreshToken", data.refreshToken || data.refreshToken || "");
     }
     return data;
   }
@@ -387,6 +387,40 @@ class ApiClient {
   logout() {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
+  }
+  async createCheckoutSession(courseId: string): Promise<{ sessionId: string; checkoutUrl: string }> {
+    const detail = this.getCourseDetail(courseId);
+    if (!detail) {
+      throw new Error("Course details not found for checkout session");
+    }
+    const res = await fetch(`${API_BASE_URL}/checkout/session`, {
+      method: "POST",
+      headers: this.getHeaders(true),
+      body: JSON.stringify({ courseId, amount: (await detail).price, currency: "USD" }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: "Failed to create checkout session" }));
+      throw new Error(err.message || "Failed to create checkout session");
+    }
+    const data = await res.json();
+    return {
+      sessionId: data.StripeCheckoutSessionId || data.sessionId || data.id,
+      checkoutUrl: data.StripeSessionUrl || data.checkoutUrl || data.url
+    };
+  }
+  async checkoutSession(courseId: string): Promise<{ sessionId: string; checkoutUrl: string }> {
+    return this.createCheckoutSession(courseId);
+  }
+  async verifyCheckout(stripeSessionId: string): Promise<{ message: string; status: string }> {
+    const res = await fetch(`${API_BASE_URL}/checkout/verify?stripeSessionId=${encodeURIComponent(stripeSessionId)}`, {
+      method: "GET",
+      headers: this.getHeaders(true),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: "Failed to verify checkout" }));
+      throw new Error(err.message || "Failed to verify checkout");
+    }
+    return res.json();
   }
 }
 

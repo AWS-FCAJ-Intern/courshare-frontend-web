@@ -49,7 +49,7 @@ import {
 import { motion } from "motion/react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
-type Page = "home" | "catalog" | "course" | "checkout" | "player" | "student" | "instructor" | "admin" | "auth" | "builder" | "profile";
+type Page = "home" | "catalog" | "course" | "player" | "student" | "instructor" | "admin" | "auth" | "builder" | "profile";
 type Role = "student" | "instructor" | "admin";
 
 interface Course {
@@ -79,16 +79,16 @@ export function mapApiCourseToCourse(apiCourse: any): Course {
   return {
     id: apiCourse.id,
     title: apiCourse.title,
-    instructor: "Sarah Chen",
-    instructorAvatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=40&h=40&fit=crop&auto=format",
-    thumbnail: "https://images.unsplash.com/photo-1516116216624-53ad39282d04?w=400&h=225&fit=crop&auto=format",
-    category: apiCourse.categoryName || "Web Development",
-    level: "Intermediate",
-    rating: 4.8,
-    reviewCount: 156,
-    students: 1250,
-    duration: "12h 30m",
-    price: apiCourse.price || 89.99,
+    instructor: apiCourse.instructorName || "Unknown Instructor",
+    instructorAvatar: apiCourse.instructorAvatar || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=32&h=32&fit=crop&auto=format",
+    thumbnail: apiCourse.thumbnail || "https://images.unsplash.com/photo-1516116216624-53ad39282d04?w=400&h=225&fit=crop&auto=format",
+    category: apiCourse.categoryName || "Unknown Category",
+    level: apiCourse.level || "Unknown Level",
+    rating: apiCourse.rating || 0,
+    reviewCount: apiCourse.reviewCount || 0,
+    students: apiCourse.students || 0,
+    duration: apiCourse.duration || "0h 0m",
+    price: apiCourse.price || "Unknown Price",
     originalPrice: apiCourse.price ? Number((apiCourse.price * 1.5).toFixed(2)) : 199.99,
     lessons: apiCourse.sections ? apiCourse.sections.flatMap((s: any) => s.lessons || []).length : 10,
     published: apiCourse.published,
@@ -818,6 +818,30 @@ function CourseDetailPage({ onNavigate, courseId }: { onNavigate: (p: Page) => v
   const [openSection, setOpenSection] = useState(0);
   const [instName, setInstName] = useState("");
   const [isEnrolled, setIsEnrolled] = useState(false);
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
+
+  const handleEnroll = async () => {
+    if (!course) return;
+    const token = localStorage.getItem("accessToken");
+    if (!token) {
+      onNavigate("auth");
+      return;
+    }
+    try {
+      setIsCheckingOut(true);
+      const session = await api.checkoutSession(course.id);
+      if (session.checkoutUrl) {
+        window.location.href = session.checkoutUrl;
+      } else {
+        alert("Failed to create checkout session URL.");
+      }
+    } catch (e: any) {
+      console.error("Stripe checkout initiation failed:", e);
+      alert(e.message || "Failed to initiate Stripe checkout.");
+    } finally {
+      setIsCheckingOut(false);
+    }
+  };
 
   useEffect(() => {
     if (courseId) {
@@ -935,8 +959,19 @@ function CourseDetailPage({ onNavigate, courseId }: { onNavigate: (p: Page) => v
                     <Play className="w-4 h-4 fill-white" /> Start Learning
                   </button>
                 ) : (
-                  <button onClick={() => onNavigate("checkout")} className="w-full py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-colors mb-2">
-                    Enroll Now
+                  <button 
+                    onClick={handleEnroll} 
+                    disabled={isCheckingOut}
+                    className="w-full py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-colors mb-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {isCheckingOut ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                        Connecting to checkout...
+                      </>
+                    ) : (
+                      "Enroll Now"
+                    )}
                   </button>
                 )}
                 {!isEnrolled && (
@@ -1104,197 +1139,7 @@ function CourseDetailPage({ onNavigate, courseId }: { onNavigate: (p: Page) => v
   );
 }
 
-// ── Checkout ───────────────────────────────────────────────────────────────────
-function CheckoutPage({ onNavigate, courseId }: { onNavigate: (p: Page) => void; courseId?: string }) {
-  const [course, setCourse] = useState<Course | null>(null);
-  const [step, setStep] = useState(1);
-  const [coupon, setCoupon] = useState("");
 
-  useEffect(() => {
-    if (courseId) {
-      api.getCourseDetail(courseId)
-        .then(data => setCourse(mapApiCourseToCourse(data)))
-        .catch(console.error);
-    } else {
-      api.getCourses().then(data => {
-        if (data.length > 0) {
-          setCourse(mapApiCourseToCourse(data[0]));
-        }
-      }).catch(console.error);
-    }
-  }, [courseId]);
-
-  if (!course) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading checkout...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (step === 3) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4">
-        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center max-w-md">
-          <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle className="w-10 h-10 text-emerald-600 dark:text-emerald-400" />
-          </div>
-          <h1 className="text-3xl font-bold font-display mb-3">Enrollment Successful!</h1>
-          <p className="text-muted-foreground mb-8">You have been enrolled in <strong>{course.title}</strong>. Start learning right now!</p>
-          <div className="flex gap-3 justify-center">
-            <button onClick={() => onNavigate("player")} className="px-6 py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary/90 transition-colors flex items-center gap-2">
-              <Play className="w-4 h-4" /> Start Learning
-            </button>
-            <button onClick={() => onNavigate("student")} className="px-6 py-3 border border-border rounded-xl font-medium hover:bg-muted transition-colors">Dashboard</button>
-          </div>
-        </motion.div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen py-10 px-4">
-      <div className="max-w-5xl mx-auto">
-        <button onClick={() => onNavigate("course")} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
-          <ChevronLeft className="w-4 h-4" /> Back to course
-        </button>
-        <h1 className="text-3xl font-bold font-display mb-2">Checkout</h1>
-        <div className="flex items-center gap-3 mb-8">
-          {[1, 2].map(s => (
-            <div key={s} className="flex items-center gap-2">
-              <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold",
-                step >= s ? "bg-primary text-white" : "bg-muted text-muted-foreground"
-              )}>{step > s ? <Check className="w-4 h-4" /> : s}</div>
-              <span className={cn("text-sm", step >= s ? "text-foreground font-medium" : "text-muted-foreground")}>{s === 1 ? "Order Review" : "Payment"}</span>
-              {s < 2 && <ChevronRight className="w-4 h-4 text-muted-foreground" />}
-            </div>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
-            {step === 1 && (
-              <div className="space-y-5">
-                <div className="bg-card border border-border rounded-xl p-6">
-                  <h2 className="font-semibold font-display mb-4">Your Order</h2>
-                  <div className="flex gap-4">
-                    <img src={course.thumbnail} alt={course.title} className="w-28 h-16 object-cover rounded-lg flex-shrink-0 bg-muted" />
-                    <div className="flex-1">
-                      <h3 className="font-medium text-sm mb-1 font-display">{course.title}</h3>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                        <img src={course.instructorAvatar} alt={course.instructor} className="w-4 h-4 rounded-full" />
-                        {course.instructor}
-                      </div>
-                      <StarRating rating={course.rating} count={course.reviewCount} size="xs" />
-                    </div>
-                  </div>
-                  <div className="mt-4 pt-4 border-t border-border">
-                    <h3 className="text-sm font-medium mb-3">Have a coupon?</h3>
-                    <div className="flex gap-2">
-                      <input value={coupon} onChange={e => setCoupon(e.target.value)} placeholder="Enter coupon code" className="flex-1 px-3 py-2 text-sm bg-input-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30" />
-                      <button className="px-4 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium">Apply</button>
-                    </div>
-                  </div>
-                </div>
-                <button onClick={() => setStep(2)} className="w-full py-3.5 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-colors">
-                  Continue to Payment
-                </button>
-              </div>
-            )}
-
-            {step === 2 && (
-              <div className="space-y-5">
-                <div className="bg-card border border-border rounded-xl p-6">
-                  <h2 className="font-semibold font-display mb-5">Payment Details</h2>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="text-sm font-medium block mb-1.5">Card Number</label>
-                      <div className="relative">
-                        <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <input className="w-full pl-9 pr-4 py-2.5 text-sm bg-input-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30" placeholder="1234 5678 9012 3456" />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm font-medium block mb-1.5">Expiry Date</label>
-                        <input className="w-full px-3 py-2.5 text-sm bg-input-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30" placeholder="MM / YY" />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium block mb-1.5">CVC</label>
-                        <div className="relative">
-                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                          <input className="w-full pl-9 pr-4 py-2.5 text-sm bg-input-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30" placeholder="•••" />
-                        </div>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium block mb-1.5">Cardholder Name</label>
-                      <input className="w-full px-3 py-2.5 text-sm bg-input-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30" placeholder="Full name on card" />
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4 mt-6 pt-5 border-t border-border">
-                    <Shield className="w-5 h-5 text-emerald-500 flex-shrink-0" />
-                    <p className="text-xs text-muted-foreground">Your payment is secured by 256-bit SSL encryption. We never store your card details.</p>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <button onClick={() => setStep(1)} className="px-5 py-3 border border-border rounded-xl font-medium hover:bg-muted transition-colors text-sm">Back</button>
-                  <button onClick={async () => {
-                    try {
-                      await api.enrollInCourse(course.id);
-                    } catch (e) {
-                      console.error("Error writing enrollment to DB, adding locally as fallback:", e);
-                    }
-                    const stored = localStorage.getItem("enrolledCourses");
-                    const enrolled = stored ? JSON.parse(stored) : [];
-                    if (!enrolled.includes(course.id)) {
-                      enrolled.push(course.id);
-                      localStorage.setItem("enrolledCourses", JSON.stringify(enrolled));
-                    }
-                    setStep(3);
-                  }} className="flex-1 py-3.5 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-colors flex items-center justify-center gap-2">
-                    <Lock className="w-4 h-4" /> Complete Purchase — ${course.price}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Order Summary */}
-          <div>
-            <div className="bg-card border border-border rounded-xl p-5 sticky top-24">
-              <h3 className="font-semibold font-display mb-4">Order Summary</h3>
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Original price</span>
-                  <span className="line-through text-muted-foreground">${course.originalPrice}</span>
-                </div>
-                <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
-                  <span>Discount</span>
-                  <span>-${(course.originalPrice - course.price).toFixed(2)}</span>
-                </div>
-                <div className="border-t border-border pt-3 flex justify-between font-bold text-base">
-                  <span>Total</span>
-                  <span>${course.price}</span>
-                </div>
-              </div>
-              <div className="mt-5 space-y-2">
-                {[{ icon: Shield, text: "30-day money-back guarantee" }, { icon: Award, text: "Certificate of completion" }, { icon: Globe, text: "Lifetime access" }].map(f => (
-                  <div key={f.text} className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <f.icon className="w-3.5 h-3.5 text-primary" /> {f.text}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ── Learning Player ────────────────────────────────────────────────────────────
 function LearningPlayerPage({ onNavigate, courseId }: { onNavigate: (p: Page) => void; courseId?: string }) {
@@ -3004,6 +2849,80 @@ export default function App() {
   const [profile, setProfile] = useState<any>(null);
 
   useEffect(() => {
+    const pathname = window.location.pathname;
+    const params = new URLSearchParams(window.location.search);
+    const success = params.get("success");
+    const canceled = params.get("canceled");
+    const courseId = params.get("courseId");
+    
+    // Support both query param success=true and pathnames /payment/success
+    const isSuccess = pathname.includes("/payment/success") || success === "true";
+    const isCanceled = pathname.includes("/payment/cancel") || canceled === "true";
+    
+    // Support session_id from backend redirect URL (Stripe session id is appended by Stripe)
+    const stripeSessionId = params.get("stripeSessionId") || params.get("session_id");
+
+    if (isSuccess) {
+      // Clear query parameters and path from URL (reset to base path /)
+      window.history.replaceState({}, document.title, "/");
+      
+      const proceedEnrollment = (cId: string | null) => {
+        if (cId) {
+          setSelectedCourseId(cId);
+          // Double guarantee: try writing to server enrollment and local cache
+          api.enrollInCourse(cId).catch((err) => {
+            console.log("[Stripe Redirect] Enrollment registration on backend already processed or handled:", err);
+          });
+
+          const stored = localStorage.getItem("enrolledCourses");
+          const enrolled = stored ? JSON.parse(stored) : [];
+          if (!enrolled.includes(cId)) {
+            enrolled.push(cId);
+            localStorage.setItem("enrolledCourses", JSON.stringify(enrolled));
+          }
+
+          alert("Payment successful! You are now enrolled in the course.");
+          navigate("player");
+        } else {
+          alert("Payment successful! Welcome to your course dashboard.");
+          navigate("student"); // Navigate to student dashboard if courseId is missing
+        }
+      };
+
+      if (stripeSessionId) {
+        api.verifyCheckout(stripeSessionId)
+          .then((res) => {
+            if (res.status === "SUCCESS") {
+              proceedEnrollment(courseId);
+            } else {
+              console.error("[Stripe Verification] Payment status not SUCCESS:", res.status);
+              alert("Payment verification pending or failed. Please contact support if you completed the payment.");
+              navigate("home");
+            }
+          })
+          .catch((err) => {
+            console.error("[Stripe Verification] Error verifying checkout session:", err);
+            alert("Could not verify payment status with server. Please try again.");
+            navigate("home");
+          });
+      } else {
+        // Fallback to direct enrollment if no session ID provided
+        proceedEnrollment(courseId);
+      }
+    } else if (isCanceled) {
+      // Clear query parameters and path from URL (reset to base path /)
+      window.history.history?.replaceState(null, "", "/") || window.history.replaceState({}, document.title, "/");
+      if (courseId) {
+        setSelectedCourseId(courseId);
+        navigate("course");
+      } else {
+        navigate("home");
+      }
+      alert("Payment was canceled. You can try enrolling again when you're ready.");
+    }
+  }, []);
+
+  useEffect(() => {
     if (isLoggedIn) {
       api.getProfile().then(userProfile => {
         setProfile(userProfile);
@@ -3052,7 +2971,6 @@ export default function App() {
         {page === "home" && <HomePage onNavigate={navigate} onSelectCourse={setSelectedCourseId} />}
         {page === "catalog" && <CourseCatalogPage onNavigate={navigate} onSelectCourse={setSelectedCourseId} />}
         {page === "course" && <CourseDetailPage onNavigate={navigate} courseId={selectedCourseId} />}
-        {page === "checkout" && <CheckoutPage onNavigate={navigate} courseId={selectedCourseId} />}
         {page === "player" && <LearningPlayerPage onNavigate={navigate} courseId={selectedCourseId} />}
         {page === "student" && <StudentDashboardPage onNavigate={navigate} profile={profile} />}
         {page === "instructor" && <InstructorPortalPage onNavigate={navigate} onSelectCourse={setSelectedCourseId} profile={profile} />}
