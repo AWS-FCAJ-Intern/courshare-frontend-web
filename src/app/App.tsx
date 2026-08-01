@@ -831,7 +831,7 @@ function CourseDetailPage({ onNavigate, courseId }: { onNavigate: (p: Page) => v
       setIsCheckingOut(true);
       const session = await api.checkoutSession(course.id);
       if (session.checkoutUrl) {
-        window.location.href = session.checkoutUrl;
+        window.open(session.checkoutUrl, "_blank");
       } else {
         alert("Failed to create checkout session URL.");
       }
@@ -2923,24 +2923,19 @@ export default function App() {
     const stripeSessionId = params.get("stripeSessionId") || params.get("session_id");
 
     if (isSuccess) {
-      // 1. Clear query parameters and path from URL (reset to base path /)
+      // If this page was opened as a popup/new tab by another window, notify and close
+      if (window.opener) {
+        window.opener.postMessage({
+          type: "PAYMENT_SUCCESS",
+          courseId,
+          stripeSessionId
+        }, window.location.origin);
+        window.close();
+        return;
+      }
+
+      // Fallback: if not opened as popup (e.g. same tab or tab restore)
       window.history.replaceState({}, document.title, "/");
-
-      // 2. Push a new history entry with a state marker.
-      // When the user clicks the browser's "Back" button, it will pop this entry,
-      // which we will catch in popstate and navigate past the Stripe Checkout URL.
-      window.history.pushState({ noStripe: true }, document.title, "/");
-
-      const handlePopState = (event: PopStateEvent) => {
-        if (!event.state || !event.state.noStripe) {
-          window.removeEventListener("popstate", handlePopState);
-          // Go back 2 steps: 1 step to pop Stripe Checkout, and 1 step to land on the pre-checkout app page.
-          // Since this is triggered by the browser's back button (user gesture), it is permitted.
-          window.history.go(-2);
-        }
-      };
-
-      window.addEventListener("popstate", handlePopState);
 
       const proceedEnrollment = (cId: string | null) => {
         if (cId) {
@@ -2972,6 +2967,15 @@ export default function App() {
         proceedEnrollment(courseId);
       }
     } else if (isCanceled) {
+      if (window.opener) {
+        window.opener.postMessage({
+          type: "PAYMENT_CANCELED",
+          courseId
+        }, window.location.origin);
+        window.close();
+        return;
+      }
+
       // Clear query parameters and path from URL (reset to base path /)
       window.history.history?.replaceState(null, "", "/") || window.history.replaceState({}, document.title, "/");
       if (courseId) {
@@ -2982,6 +2986,54 @@ export default function App() {
       }
       alert("Payment was canceled. You can try enrolling again when you're ready.");
     }
+  }, []);
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+
+      if (event.data?.type === "PAYMENT_SUCCESS") {
+        const { courseId, stripeSessionId } = event.data;
+
+        const proceedEnrollment = (cId: string | null) => {
+          if (cId) {
+            setSelectedCourseId(cId);
+            alert("Payment successful! Welcome to your course.");
+            navigate("course");
+          } else {
+            alert("Payment successful! Welcome to your course dashboard.");
+            navigate("student");
+          }
+        };
+
+        if (stripeSessionId) {
+          api.verifyCheckout(stripeSessionId)
+            .then((res) => {
+              if (res.status === "SUCCESS") {
+                proceedEnrollment(courseId);
+              } else {
+                alert("Payment verification pending or failed. Please contact support.");
+              }
+            })
+            .catch((err) => {
+              console.error("[Stripe Verification] Error verifying checkout session:", err);
+              alert("Could not verify payment status with server. Please try again.");
+            });
+        } else {
+          proceedEnrollment(courseId);
+        }
+      } else if (event.data?.type === "PAYMENT_CANCELED") {
+        const { courseId } = event.data;
+        if (courseId) {
+          setSelectedCourseId(courseId);
+          navigate("course");
+        }
+        alert("Payment was canceled. You can try enrolling again when you're ready.");
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
   }, []);
 
   useEffect(() => {
