@@ -2869,20 +2869,8 @@ export default function App() {
       const proceedEnrollment = (cId: string | null) => {
         if (cId) {
           setSelectedCourseId(cId);
-          // Double guarantee: try writing to server enrollment and local cache
-          api.enrollInCourse(cId).catch((err) => {
-            console.log("[Stripe Redirect] Enrollment registration on backend already processed or handled:", err);
-          });
-
-          const stored = localStorage.getItem("enrolledCourses");
-          const enrolled = stored ? JSON.parse(stored) : [];
-          if (!enrolled.includes(cId)) {
-            enrolled.push(cId);
-            localStorage.setItem("enrolledCourses", JSON.stringify(enrolled));
-          }
-
-          alert("Payment successful! You are now enrolled in the course.");
-          navigate("player");
+          alert("Payment successful! Welcome to your course.");
+          navigate("course");
         } else {
           alert("Payment successful! Welcome to your course dashboard.");
           navigate("student"); // Navigate to student dashboard if courseId is missing
