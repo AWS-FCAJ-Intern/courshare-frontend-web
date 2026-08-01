@@ -343,6 +343,22 @@ class ApiClient {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
   }
+  async checkoutSession(courseId: string): Promise<{ sessionId: string; checkoutUrl: string }> {
+    const detail = this.getCourseDetail(courseId);
+    if (!detail) {
+      throw new Error("Course details not found for checkout session");
+    }
+    const res = await fetch(`${API_BASE_URL}/checkout/session`, {
+      method: "POST",
+      headers: this.getHeaders(true),
+      body: JSON.stringify({ courseId, amount: (await detail).price, currency: "USD" }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: "Failed to create checkout session" }));
+      throw new Error(err.message || "Failed to create checkout session");
+    }
+    return res.json();
+  }
 }
 
 export const api = new ApiClient();
