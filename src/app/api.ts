@@ -315,14 +315,13 @@ class ApiClient {
     return res.json();
   }
 
-  async checkEnrollment(courseId: string): Promise<{ enrolled: { isEnrolled: boolean } }> {
-    console.log("[API] checkEnrollment called for courseId:", courseId);
+  async checkEnrollment(courseId: string): Promise<{ enrolled: { isEnrolled: { enrolled: boolean } } }> {
     const res = await fetch(`${API_BASE_URL}/enrollments/${courseId}/check`, {
       method: "GET",
       headers: this.getHeaders(true),
     });
     if (!res.ok) {
-      return { enrolled: { isEnrolled: false } };
+      return { enrolled: { isEnrolled: { enrolled: false } } };
     }
     return res.json();
   }

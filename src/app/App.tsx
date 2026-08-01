@@ -865,7 +865,7 @@ function CourseDetailPage({ onNavigate, courseId }: { onNavigate: (p: Page) => v
 
       api.checkEnrollment(courseId)
         .then(res => {
-          setIsEnrolled(res.enrolled.isEnrolled);
+          setIsEnrolled(!!res.enrolled?.isEnrolled?.enrolled);
         })
         .catch(console.error);
     } else {
@@ -1591,6 +1591,10 @@ function StudentDashboardPage({ onNavigate, profile }: { onNavigate: (p: Page) =
   }, []);
 
   const enrolled = enrolledCourses;
+  const totalEnrolled = enrolled.length;
+  const inProgressCourses = enrolled.filter(c => (c.progress ?? 0) > 0 && (c.progress ?? 0) < 100).length;
+  const completedCourses = enrolled.filter(c => (c.progress ?? 0) === 100).length;
+  const completionRate = totalEnrolled > 0 ? Math.round((completedCourses / totalEnrolled) * 100) : 0;
 
   return (
     <div className="min-h-screen">
@@ -1603,10 +1607,10 @@ function StudentDashboardPage({ onNavigate, profile }: { onNavigate: (p: Page) =
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <StatCard icon={BookMarked} label="Enrolled Courses" value="5" sub="2 in progress" color="text-primary" bg="bg-primary/10" />
-          <StatCard icon={CheckCircle} label="Completed" value="2" sub="40% completion rate" color="text-emerald-600" bg="bg-emerald-100 dark:bg-emerald-900/30" />
-          <StatCard icon={Clock} label="Hours Learned" value="84h" sub="This month: 12h" color="text-violet-600" bg="bg-violet-100 dark:bg-violet-900/30" />
-          <StatCard icon={Award} label="Certificates" value="2" sub="Share on LinkedIn" color="text-amber-600" bg="bg-amber-100 dark:bg-amber-900/30" />
+          <StatCard icon={BookMarked} label="Enrolled Courses" value={totalEnrolled.toString()} sub={`${inProgressCourses} in progress`} color="text-primary" bg="bg-primary/10" />
+          <StatCard icon={CheckCircle} label="Completed" value={completedCourses.toString()} sub={`${completionRate}% completion rate`} color="text-emerald-600" bg="bg-emerald-100 dark:bg-emerald-900/30" />
+          <StatCard icon={Clock} label="Hours Learned" value="0h" sub="This month: 0h" color="text-violet-600" bg="bg-violet-100 dark:bg-violet-900/30" />
+          <StatCard icon={Award} label="Certificates" value="0" sub="Share on LinkedIn" color="text-amber-600" bg="bg-amber-100 dark:bg-amber-900/30" />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
