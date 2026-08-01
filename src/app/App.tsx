@@ -2909,49 +2909,6 @@ export default function App() {
   const [profile, setProfile] = useState<any>(null);
 
   useEffect(() => {
-    // 1. Check if we have a pending successful payment notification in sessionStorage (after going back in history)
-    const successCourseId = sessionStorage.getItem("payment_success_course_id");
-    const successSessionId = sessionStorage.getItem("payment_success_session_id");
-
-    if (successCourseId !== null) {
-      sessionStorage.removeItem("payment_success_course_id");
-      sessionStorage.removeItem("payment_success_session_id");
-
-      const cId = successCourseId || null;
-
-      const proceedEnrollment = (courseId: string | null) => {
-        if (courseId) {
-          setSelectedCourseId(courseId);
-          alert("Payment successful! Welcome to your course.");
-          navigate("course");
-        } else {
-          alert("Payment successful! Welcome to your course dashboard.");
-          navigate("student"); // Navigate to student dashboard if courseId is missing
-        }
-      };
-
-      if (successSessionId) {
-        api.verifyCheckout(successSessionId)
-          .then((res) => {
-            if (res.status === "SUCCESS") {
-              proceedEnrollment(cId);
-            } else {
-              alert("Payment verification pending or failed. Please contact support.");
-              navigate("home");
-            }
-          })
-          .catch((err) => {
-            console.error("[Stripe Verification] Error verifying checkout session:", err);
-            alert("Could not verify payment status with server. Please try again.");
-            navigate("home");
-          });
-      } else {
-        proceedEnrollment(cId);
-      }
-      return;
-    }
-
-    // 2. Normal URL parameter processing
     const pathname = window.location.pathname;
     const params = new URLSearchParams(window.location.search);
     const success = params.get("success");
@@ -2966,44 +2923,53 @@ export default function App() {
     const stripeSessionId = params.get("stripeSessionId") || params.get("session_id");
 
     if (isSuccess) {
-      if (window.history.length >= 3) {
-        // Store success info in sessionStorage and go back 2 steps to skip Stripe checkout in history stack
-        sessionStorage.setItem("payment_success_course_id", courseId || "");
-        sessionStorage.setItem("payment_success_session_id", stripeSessionId || "");
-        window.history.go(-2);
-      } else {
-        // Fallback if not enough history (e.g., opened success URL directly in new tab)
-        window.history.replaceState({}, document.title, "/");
-        
-        const proceedEnrollment = (cId: string | null) => {
-          if (cId) {
-            setSelectedCourseId(cId);
-            alert("Payment successful! Welcome to your course.");
-            navigate("course");
-          } else {
-            alert("Payment successful! Welcome to your course dashboard.");
-            navigate("student");
-          }
-        };
+      // 1. Clear query parameters and path from URL (reset to base path /)
+      window.history.replaceState({}, document.title, "/");
 
-        if (stripeSessionId) {
-          api.verifyCheckout(stripeSessionId)
-            .then((res) => {
-              if (res.status === "SUCCESS") {
-                proceedEnrollment(courseId);
-              } else {
-                alert("Payment verification pending or failed. Please contact support.");
-                navigate("home");
-              }
-            })
-            .catch((err) => {
-              console.error("[Stripe Verification] Error verifying checkout session:", err);
-              alert("Could not verify payment status with server. Please try again.");
-              navigate("home");
-            });
-        } else {
-          proceedEnrollment(courseId);
+      // 2. Push a new history entry with a state marker.
+      // When the user clicks the browser's "Back" button, it will pop this entry,
+      // which we will catch in popstate and navigate past the Stripe Checkout URL.
+      window.history.pushState({ noStripe: true }, document.title, "/");
+
+      const handlePopState = (event: PopStateEvent) => {
+        if (!event.state || !event.state.noStripe) {
+          window.removeEventListener("popstate", handlePopState);
+          // Go back 2 steps: 1 step to pop Stripe Checkout, and 1 step to land on the pre-checkout app page.
+          // Since this is triggered by the browser's back button (user gesture), it is permitted.
+          window.history.go(-2);
         }
+      };
+
+      window.addEventListener("popstate", handlePopState);
+
+      const proceedEnrollment = (cId: string | null) => {
+        if (cId) {
+          setSelectedCourseId(cId);
+          alert("Payment successful! Welcome to your course.");
+          navigate("course");
+        } else {
+          alert("Payment successful! Welcome to your course dashboard.");
+          navigate("student"); // Navigate to student dashboard if courseId is missing
+        }
+      };
+
+      if (stripeSessionId) {
+        api.verifyCheckout(stripeSessionId)
+          .then((res) => {
+            if (res.status === "SUCCESS") {
+              proceedEnrollment(courseId);
+            } else {
+              alert("Payment verification pending or failed. Please contact support.");
+              navigate("home");
+            }
+          })
+          .catch((err) => {
+            console.error("[Stripe Verification] Error verifying checkout session:", err);
+            alert("Could not verify payment status with server. Please try again.");
+            navigate("home");
+          });
+      } else {
+        proceedEnrollment(courseId);
       }
     } else if (isCanceled) {
       // Clear query parameters and path from URL (reset to base path /)
