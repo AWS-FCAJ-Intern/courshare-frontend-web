@@ -2899,14 +2899,33 @@ function DemoBanner({ role, setRole, page, onNavigate }: { role: Role; setRole: 
   );
 }
 
+const getInitialPageAndCourse = () => {
+  const params = new URLSearchParams(window.location.search);
+  const pageParam = params.get("page") as Page;
+  const courseIdParam = params.get("courseId") || "";
+
+  const validPages: Page[] = ["home", "catalog", "course", "player", "student", "instructor", "admin", "auth", "builder", "profile"];
+  const initialPage = validPages.includes(pageParam) ? pageParam : "home";
+
+  return { initialPage, initialCourseId: courseIdParam };
+};
+
 // ── App ────────────────────────────────────────────────────────────────────────
 export default function App() {
-  const [page, setPage] = useState<Page>("home");
+  const { initialPage, initialCourseId } = getInitialPageAndCourse();
+  const [page, setPage] = useState<Page>(initialPage);
   const [dark, setDark] = useState(false);
   const [role, setRole] = useState<Role>("student");
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem("accessToken"));
-  const [selectedCourseId, setSelectedCourseId] = useState<string>("");
+  const [selectedCourseId, _setSelectedCourseId] = useState<string>(initialCourseId);
   const [profile, setProfile] = useState<any>(null);
+
+  const selectedCourseIdRef = useRef(initialCourseId);
+
+  const setSelectedCourseId = (id: string) => {
+    selectedCourseIdRef.current = id;
+    _setSelectedCourseId(id);
+  };
 
   useEffect(() => {
     const pathname = window.location.pathname;
@@ -3055,7 +3074,42 @@ export default function App() {
     }
   }, [isLoggedIn]);
 
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const pageParam = params.get("page") as Page;
+      const courseIdParam = params.get("courseId") || "";
+
+      const validPages: Page[] = ["home", "catalog", "course", "player", "student", "instructor", "admin", "auth", "builder", "profile"];
+      const targetPage = validPages.includes(pageParam) ? pageParam : "home";
+
+      setPage(targetPage);
+      if (courseIdParam) {
+        selectedCourseIdRef.current = courseIdParam;
+        _setSelectedCourseId(courseIdParam);
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
   const navigate = (p: Page) => {
+    const cId = selectedCourseIdRef.current;
+
+    // Build URL query params
+    const params = new URLSearchParams();
+    if (p !== "home") {
+      params.set("page", p);
+    }
+    if (cId && ["course", "player", "builder"].includes(p)) {
+      params.set("courseId", cId);
+    }
+
+    const queryString = params.toString();
+    const newUrl = queryString ? `?${queryString}` : "/";
+
+    window.history.pushState({ page: p, courseId: cId }, "", newUrl);
     setPage(p);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
