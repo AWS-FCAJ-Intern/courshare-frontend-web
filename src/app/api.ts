@@ -57,6 +57,20 @@ export interface ApiCourseDetail extends ApiCourse {
   sections: ApiSection[];
 }
 
+export interface ApiTransaction {
+  id: string;
+  userId: string;
+  courseId: string;
+  amount: string;
+  currency: string;
+  status: string;
+  provider: string;
+  stripeSessionId: string;
+  stripePaymentIntentId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 class ApiClient {
   private getHeaders(authRequired = false): HeadersInit {
     const headers: Record<string, string> = {
@@ -407,6 +421,19 @@ class ApiClient {
     if (!res.ok) {
       const err = await res.json().catch(() => ({ message: "Failed to verify checkout" }));
       throw new Error(err.message || "Failed to verify checkout");
+    }
+    return res.json();
+  }
+  async getTransactions(): Promise<{ message: string; transactions: ApiTransaction[] }> {
+    const res = await fetch(`${API_BASE_URL}/transactions`, {
+      method: "GET",
+      headers: this.getHeaders(true),
+    });
+    if (!res.ok) {
+      if (res.status === 404) {
+        return { message: "No transactions found", transactions: [] };
+      }
+      throw new Error("Failed to fetch transactions");
     }
     return res.json();
   }

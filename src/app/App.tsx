@@ -1576,17 +1576,31 @@ function ProfilePage({ onNavigate, profile, onProfileUpdate }: { onNavigate: (p:
 function StudentDashboardPage({ onNavigate, profile }: { onNavigate: (p: Page) => void; profile: any }) {
   const [activeTab, setActiveTab] = useState("learning");
   const [enrolledCourses, setEnrolledCourses] = useState<Course[]>([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
 
   useEffect(() => {
     Promise.all([
       api.getEnrollments().catch(() => ({ data: [] })),
-      api.getCourses().catch(() => [])
-    ]).then(([enrollmentsRes, coursesRes]) => {
+      api.getCourses().catch(() => []),
+      api.getTransactions().catch(() => ({ transactions: [] }))
+    ]).then(([enrollmentsRes, coursesRes, transactionsRes]) => {
       const enrollments = enrollmentsRes.data || [];
       const enrolledIds = enrollments.map((e: any) => e.courseId);
       const mapped = coursesRes.map(mapApiCourseToCourse);
       const filtered = mapped.filter(c => enrolledIds.includes(c.id));
       setEnrolledCourses(filtered.map((c, i) => ({ ...c, progress: i === 0 ? 64 : 12 })));
+
+      const txs = transactionsRes.transactions || [];
+      const mappedTxs = txs.map((tx: any) => {
+        const course = mapped.find(c => c.id === tx.courseId);
+        return {
+          ...tx,
+          courseTitle: course ? course.title : "Unknown Course",
+          courseThumbnail: course ? course.thumbnail : ""
+        };
+      });
+      mappedTxs.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setTransactions(mappedTxs);
     }).catch(console.error);
   }, []);
 
@@ -1615,12 +1629,12 @@ function StudentDashboardPage({ onNavigate, profile }: { onNavigate: (p: Page) =
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
-            <div className="flex border-b border-border mb-6">
-              {["learning", "completed", "wishlist"].map(t => (
+            <div className="flex border-b border-border mb-6 overflow-x-auto whitespace-nowrap scrollbar-none">
+              {["learning", "completed", "wishlist", "transactions"].map(t => (
                 <button key={t} onClick={() => setActiveTab(t)}
                   className={cn("px-5 py-2.5 text-sm font-medium capitalize border-b-2 -mb-px transition-colors",
                     activeTab === t ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
-                  )}>{t}</button>
+                  )}>{t === "transactions" ? "Transactions" : t}</button>
               ))}
             </div>
 
@@ -1677,6 +1691,48 @@ function StudentDashboardPage({ onNavigate, profile }: { onNavigate: (p: Page) =
             {activeTab === "wishlist" && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {COURSES.slice(4, 6).map(c => <CourseCard key={c.id} course={c} onNavigate={onNavigate} />)}
+              </div>
+            )}
+
+            {activeTab === "transactions" && (
+              <div className="space-y-4">
+                {transactions.length === 0 ? (
+                  <div className="text-center py-10 border border-dashed border-border rounded-xl text-muted-foreground bg-card">
+                    <CreditCard className="w-8 h-8 mx-auto mb-2 opacity-50 text-muted-foreground" />
+                    <p className="text-sm">No transactions found</p>
+                  </div>
+                ) : (
+                  transactions.map(tx => (
+                    <div key={tx.id} className="bg-card border border-border rounded-xl p-4 flex items-center gap-4 hover:shadow-md transition-all">
+                      <div className="w-12 h-12 flex-shrink-0 rounded-lg overflow-hidden bg-primary/10 flex items-center justify-center text-primary">
+                        <CreditCard className="w-6 h-6" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                          <h3 className="font-semibold text-sm font-display truncate">{tx.courseTitle}</h3>
+                          <span className="text-sm font-bold text-foreground">
+                            {tx.currency === "USD" ? "$" : `${tx.currency} `}{parseFloat(tx.amount).toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs text-muted-foreground">
+                          <span>Date: {new Date(tx.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}</span>
+                          <span className="hidden sm:inline">•</span>
+                          <span className="font-mono">ID: {tx.id.substring(0, 8)}...</span>
+                        </div>
+                      </div>
+                      <div className="flex-shrink-0">
+                        <span className={cn(
+                          "px-2.5 py-0.5 rounded-full text-xs font-medium capitalize",
+                          tx.status === "SUCCESS" && "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400",
+                          tx.status === "PENDING" && "bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400",
+                          tx.status !== "SUCCESS" && tx.status !== "PENDING" && "bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400"
+                        )}>
+                          {tx.status.toLowerCase()}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             )}
           </div>
