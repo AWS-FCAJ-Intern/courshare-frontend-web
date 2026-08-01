@@ -2688,6 +2688,80 @@ export default function App() {
   const [profile, setProfile] = useState<any>(null);
 
   useEffect(() => {
+    const pathname = window.location.pathname;
+    const params = new URLSearchParams(window.location.search);
+    const success = params.get("success");
+    const canceled = params.get("canceled");
+    const courseId = params.get("courseId");
+    
+    // Support both query param success=true and pathnames /payment/success
+    const isSuccess = pathname.includes("/payment/success") || success === "true";
+    const isCanceled = pathname.includes("/payment/cancel") || canceled === "true";
+    
+    // Support session_id from backend redirect URL (Stripe session id is appended by Stripe)
+    const stripeSessionId = params.get("stripeSessionId") || params.get("session_id");
+
+    if (isSuccess) {
+      // Clear query parameters and path from URL (reset to base path /)
+      window.history.replaceState({}, document.title, "/");
+      
+      const proceedEnrollment = (cId: string | null) => {
+        if (cId) {
+          setSelectedCourseId(cId);
+          // Double guarantee: try writing to server enrollment and local cache
+          api.enrollInCourse(cId).catch((err) => {
+            console.log("[Stripe Redirect] Enrollment registration on backend already processed or handled:", err);
+          });
+
+          const stored = localStorage.getItem("enrolledCourses");
+          const enrolled = stored ? JSON.parse(stored) : [];
+          if (!enrolled.includes(cId)) {
+            enrolled.push(cId);
+            localStorage.setItem("enrolledCourses", JSON.stringify(enrolled));
+          }
+
+          alert("Payment successful! You are now enrolled in the course.");
+          navigate("player");
+        } else {
+          alert("Payment successful! Welcome to your course dashboard.");
+          navigate("student"); // Navigate to student dashboard if courseId is missing
+        }
+      };
+
+      if (stripeSessionId) {
+        api.verifyCheckout(stripeSessionId)
+          .then((res) => {
+            if (res.status === "SUCCESS") {
+              proceedEnrollment(courseId);
+            } else {
+              console.error("[Stripe Verification] Payment status not SUCCESS:", res.status);
+              alert("Payment verification pending or failed. Please contact support if you completed the payment.");
+              navigate("home");
+            }
+          })
+          .catch((err) => {
+            console.error("[Stripe Verification] Error verifying checkout session:", err);
+            alert("Could not verify payment status with server. Please try again.");
+            navigate("home");
+          });
+      } else {
+        // Fallback to direct enrollment if no session ID provided
+        proceedEnrollment(courseId);
+      }
+    } else if (isCanceled) {
+      // Clear query parameters and path from URL (reset to base path /)
+      window.history.history?.replaceState(null, "", "/") || window.history.replaceState({}, document.title, "/");
+      if (courseId) {
+        setSelectedCourseId(courseId);
+        navigate("course");
+      } else {
+        navigate("home");
+      }
+      alert("Payment was canceled. You can try enrolling again when you're ready.");
+    }
+  }, []);
+
+  useEffect(() => {
     if (isLoggedIn) {
       api.getProfile().then(userProfile => {
         setProfile(userProfile);

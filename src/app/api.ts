@@ -343,7 +343,7 @@ class ApiClient {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
   }
-  async checkoutSession(courseId: string): Promise<{ sessionId: string; checkoutUrl: string }> {
+  async createCheckoutSession(courseId: string): Promise<{ sessionId: string; checkoutUrl: string }> {
     const detail = this.getCourseDetail(courseId);
     if (!detail) {
       throw new Error("Course details not found for checkout session");
@@ -356,6 +356,24 @@ class ApiClient {
     if (!res.ok) {
       const err = await res.json().catch(() => ({ message: "Failed to create checkout session" }));
       throw new Error(err.message || "Failed to create checkout session");
+    }
+    const data = await res.json();
+    return {
+      sessionId: data.StripeCheckoutSessionId || data.sessionId || data.id,
+      checkoutUrl: data.StripeSessionUrl || data.checkoutUrl || data.url
+    };
+  }
+  async checkoutSession(courseId: string): Promise<{ sessionId: string; checkoutUrl: string }> {
+    return this.createCheckoutSession(courseId);
+  }
+  async verifyCheckout(stripeSessionId: string): Promise<{ message: string; status: string }> {
+    const res = await fetch(`${API_BASE_URL}/checkout/verify?stripeSessionId=${encodeURIComponent(stripeSessionId)}`, {
+      method: "GET",
+      headers: this.getHeaders(true),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: "Failed to verify checkout" }));
+      throw new Error(err.message || "Failed to verify checkout");
     }
     return res.json();
   }
