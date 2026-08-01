@@ -93,14 +93,14 @@ class ApiClient {
     console.log("[API] Login raw response:", data);
     
     // API Gateway / Cognito typically requires ID Token for user attributes
-    const token = data.idToken || data.id_token || data.IdToken || data.accessToken || data.access_token;
+    const token = data.idToken || data.id_token || data.IdToken || data.accessToken || data.accessToken;
     console.log("[API] Using token:", token === data.accessToken ? "accessToken" : "idToken");
     
     if (token) {
       localStorage.setItem("accessToken", token);
     }
-    if (data.refreshToken || data.refresh_token) {
-      localStorage.setItem("refreshToken", data.refreshToken || data.refresh_token || "");
+    if (data.refreshToken || data.refreshToken) {
+      localStorage.setItem("refreshToken", data.refreshToken || data.refreshToken || "");
     }
     return data;
   }
@@ -118,12 +118,12 @@ class ApiClient {
     const data: AuthResponse = await res.json();
     console.log("[API] Register raw response:", data);
     
-    const token = data.idToken || data.id_token || data.IdToken || data.accessToken || data.access_token;
+    const token = data.idToken || data.id_token || data.IdToken || data.accessToken || data.accessToken;
     if (token) {
       localStorage.setItem("accessToken", token);
     }
-    if (data.refreshToken || data.refresh_token) {
-      localStorage.setItem("refreshToken", data.refreshToken || data.refresh_token || "");
+    if (data.refreshToken || data.refreshToken) {
+      localStorage.setItem("refreshToken", data.refreshToken || data.refreshToken || "");
     }
     return data;
   }
