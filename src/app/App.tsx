@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import Hls from "hls.js";
 import { api } from "./api";
+import { toast } from "sonner";
+import { Toaster } from "./components/ui/sonner";
 
 export function HlsVideoPlayer({ src }: { src: string }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -833,11 +835,11 @@ function CourseDetailPage({ onNavigate, courseId }: { onNavigate: (p: Page) => v
       if (session.checkoutUrl) {
         window.open(session.checkoutUrl, "_blank");
       } else {
-        alert("Failed to create checkout session URL.");
+        toast.error("Failed to create checkout session URL.");
       }
     } catch (e: any) {
       console.error("Stripe checkout initiation failed:", e);
-      alert(e.message || "Failed to initiate Stripe checkout.");
+      toast.error(e.message || "Failed to initiate Stripe checkout.");
     } finally {
       setIsCheckingOut(false);
     }
@@ -1844,6 +1846,7 @@ function InstructorPortalPage({ onNavigate, onSelectCourse, profile }: { onNavig
     setLoading(true);
     try {
       const newCourse = await api.createCourse(title, description, categoryId || null, parseFloat(price) || 0);
+      toast.success("Course created successfully!");
       setIsModalOpen(false);
       setTitle("");
       setDescription("");
@@ -1854,7 +1857,7 @@ function InstructorPortalPage({ onNavigate, onSelectCourse, profile }: { onNavig
       }
       onNavigate("builder");
     } catch (err: any) {
-      alert(err.message || "Failed to create course");
+      toast.error(err.message || "Failed to create course");
     } finally {
       setLoading(false);
     }
@@ -1967,7 +1970,10 @@ function InstructorPortalPage({ onNavigate, onSelectCourse, profile }: { onNavig
                               <button onClick={() => { if (onSelectCourse) onSelectCourse(c.id); onNavigate("builder"); }} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title="Course Builder"><Edit className="w-3.5 h-3.5" /></button>
                               <button onClick={() => {
                                 if (confirm("Are you sure you want to delete this course?")) {
-                                  api.deleteCourse(c.id).then(() => fetchCourses()).catch(err => alert(err.message || "Failed to delete"));
+                                  api.deleteCourse(c.id).then(() => {
+                                    fetchCourses();
+                                    toast.success("Course deleted successfully!");
+                                  }).catch(err => toast.error(err.message || "Failed to delete"));
                                 }
                               }} className="p-1.5 rounded-lg hover:bg-muted text-rose-500 transition-colors" title="Delete Course"><Trash2 className="w-3.5 h-3.5" /></button>
                             </div>
@@ -2154,9 +2160,9 @@ function CourseBuilderPage({ onNavigate, courseId }: { onNavigate: (p: Page) => 
         throw new Error("Failed to upload file to S3");
       }
       setLessonVideo(videoUrl);
-      alert("Video uploaded successfully! It is now being processed on AWS.");
+      toast.success("Video uploaded successfully! It is now being processed on AWS.");
     } catch (err: any) {
-      alert(err.message || "Failed to upload video");
+      toast.error(err.message || "Failed to upload video");
       setVideoFile(null);
     } finally {
       setUploadingVideo(false);
@@ -2171,8 +2177,9 @@ function CourseBuilderPage({ onNavigate, courseId }: { onNavigate: (p: Page) => 
       await api.updateCourse(courseId, editTitle, editDescription, editCategoryId || null, parseFloat(editPrice) || 0);
       setIsEditModalOpen(false);
       fetchCourseDetails();
+      toast.success("Course updated successfully!");
     } catch (err: any) {
-      alert(err.message || "Failed to update course");
+      toast.error(err.message || "Failed to update course");
     } finally {
       setLoading(false);
     }
@@ -2188,8 +2195,9 @@ function CourseBuilderPage({ onNavigate, courseId }: { onNavigate: (p: Page) => 
       setSectionTitle("");
       setAddingSection(false);
       fetchCourseDetails();
+      toast.success("Section added successfully!");
     } catch (err: any) {
-      alert(err.message || "Failed to add section");
+      toast.error(err.message || "Failed to add section");
     } finally {
       setLoading(false);
     }
@@ -2200,8 +2208,9 @@ function CourseBuilderPage({ onNavigate, courseId }: { onNavigate: (p: Page) => 
     try {
       await api.deleteSection(courseId, sectionId);
       fetchCourseDetails();
+      toast.success("Section deleted successfully!");
     } catch (err: any) {
-      alert(err.message || "Failed to delete section");
+      toast.error(err.message || "Failed to delete section");
     }
   };
 
@@ -2231,8 +2240,9 @@ function CourseBuilderPage({ onNavigate, courseId }: { onNavigate: (p: Page) => 
       setLessonContent("");
       setActiveSectionIdForLesson(null);
       fetchCourseDetails();
+      toast.success("Lesson added successfully!");
     } catch (err: any) {
-      alert(err.message || "Failed to add lesson");
+      toast.error(err.message || "Failed to add lesson");
     } finally {
       setLoading(false);
     }
@@ -2243,8 +2253,9 @@ function CourseBuilderPage({ onNavigate, courseId }: { onNavigate: (p: Page) => 
     try {
       await api.deleteLesson(courseId, sectionId, lessonId);
       fetchCourseDetails();
+      toast.success("Lesson deleted successfully!");
     } catch (err: any) {
-      alert(err.message || "Failed to delete lesson");
+      toast.error(err.message || "Failed to delete lesson");
     }
   };
 
@@ -2752,15 +2763,15 @@ function AuthPage({ onNavigate, onLogin }: { onNavigate: (p: Page) => void; onLo
 
   const handleSendOtp = async () => {
     if (!email) {
-      alert("Vui lòng nhập email trước khi gửi mã xác thực.");
+      toast.warning("Vui lòng nhập email trước khi gửi mã xác thực.");
       return;
     }
     try {
       await api.sendOtp(email);
-      alert("Đã gửi mã xác thực đến email của bạn.");
+      toast.success("Đã gửi mã xác thực đến email của bạn.");
       setOtpCountdown(60);
     } catch (err: any) {
-      alert(err.message || "Không thể gửi mã xác thực.");
+      toast.error(err.message || "Không thể gửi mã xác thực.");
     }
   };
 
@@ -2775,8 +2786,10 @@ function AuthPage({ onNavigate, onLogin }: { onNavigate: (p: Page) => void; onLo
     try {
       if (mode === "login") {
         await api.login(email, password);
+        toast.success("Đăng nhập thành công!");
       } else {
         await api.register(email, password, name, selectedRole, otp);
+        toast.success("Đăng ký tài khoản thành công!");
       }
       const profile = await api.getProfile();
       let matchedRole: Role = "student";
@@ -2788,7 +2801,7 @@ function AuthPage({ onNavigate, onLogin }: { onNavigate: (p: Page) => void; onLo
       onLogin(matchedRole);
       onNavigate(matchedRole);
     } catch (err: any) {
-      alert(err.message || "Authentication failed");
+      toast.error(err.message || "Authentication failed");
     }
   };
 
@@ -3019,10 +3032,10 @@ export default function App() {
       const proceedEnrollment = (cId: string | null) => {
         if (cId) {
           setSelectedCourseId(cId);
-          alert("Payment successful! Welcome to your course.");
+          toast.success("Payment successful! Welcome to your course.");
           navigate("course");
         } else {
-          alert("Payment successful! Welcome to your course dashboard.");
+          toast.success("Payment successful! Welcome to your course dashboard.");
           navigate("student"); // Navigate to student dashboard if courseId is missing
         }
       };
@@ -3033,13 +3046,13 @@ export default function App() {
             if (res.status === "SUCCESS") {
               proceedEnrollment(courseId);
             } else {
-              alert("Payment verification pending or failed. Please contact support.");
+              toast.error("Payment verification pending or failed. Please contact support.");
               navigate("home");
             }
           })
           .catch((err) => {
             console.error("[Stripe Verification] Error verifying checkout session:", err);
-            alert("Could not verify payment status with server. Please try again.");
+            toast.error("Could not verify payment status with server. Please try again.");
             navigate("home");
           });
       } else {
@@ -3063,7 +3076,7 @@ export default function App() {
       } else {
         navigate("home");
       }
-      alert("Payment was canceled. You can try enrolling again when you're ready.");
+      toast.info("Payment was canceled. You can try enrolling again when you're ready.");
     }
   }, []);
 
@@ -3077,10 +3090,10 @@ export default function App() {
         const proceedEnrollment = (cId: string | null) => {
           if (cId) {
             setSelectedCourseId(cId);
-            alert("Payment successful! Welcome to your course.");
+            toast.success("Payment successful! Welcome to your course.");
             navigate("course");
           } else {
-            alert("Payment successful! Welcome to your course dashboard.");
+            toast.success("Payment successful! Welcome to your course dashboard.");
             navigate("student");
           }
         };
@@ -3091,12 +3104,12 @@ export default function App() {
               if (res.status === "SUCCESS") {
                 proceedEnrollment(courseId);
               } else {
-                alert("Payment verification pending or failed. Please contact support.");
+                toast.error("Payment verification pending or failed. Please contact support.");
               }
             })
             .catch((err) => {
               console.error("[Stripe Verification] Error verifying checkout session:", err);
-              alert("Could not verify payment status with server. Please try again.");
+              toast.error("Could not verify payment status with server. Please try again.");
             });
         } else {
           proceedEnrollment(courseId);
@@ -3107,7 +3120,7 @@ export default function App() {
           setSelectedCourseId(courseId);
           navigate("course");
         }
-        alert("Payment was canceled. You can try enrolling again when you're ready.");
+        toast.info("Payment was canceled. You can try enrolling again when you're ready.");
       }
     };
 
@@ -3191,6 +3204,7 @@ export default function App() {
 
   return (
     <div className={cn("min-h-screen bg-background text-foreground", dark && "dark")}>
+      <Toaster theme={dark ? "dark" : "light"} closeButton richColors position="top-right" />
       {showNav && (
         <Navbar page={page} onNavigate={navigate} dark={dark} onDark={() => setDark(!dark)} role={role} isLoggedIn={isLoggedIn} onLogout={handleLogout} profile={profile} />
       )}
