@@ -111,11 +111,23 @@ class ApiClient {
     return data;
   }
 
-  async register(email: string, password: string, fullName: string, role: string): Promise<AuthResponse> {
+  async sendOtp(email: string): Promise<void> {
+    const res = await fetch(`${API_BASE_URL}/auth/register/send-otp`, {
+      method: "POST",
+      headers: this.getHeaders(),
+      body: JSON.stringify({ email }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: "Failed to send OTP" }));
+      throw new Error(err.message || "Failed to send OTP");
+    }
+  }
+
+  async register(email: string, password: string, fullName: string, role: string, otp: string): Promise<AuthResponse> {
     const res = await fetch(`${API_BASE_URL}/auth/register`, {
       method: "POST",
       headers: this.getHeaders(),
-      body: JSON.stringify({ email, password, fullName, role }),
+      body: JSON.stringify({ email, password, fullName, role: role.toUpperCase(), otp }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ message: "Registration failed" }));

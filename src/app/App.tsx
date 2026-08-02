@@ -1595,7 +1595,7 @@ function StudentDashboardPage({ onNavigate, profile }: { onNavigate: (p: Page) =
         const course = mapped.find(c => c.id === tx.courseId);
         return {
           ...tx,
-          courseTitle: course ? course.title : "Unknown Course",
+          courseTitle: course ? course.title : "Delete Course",
           courseThumbnail: course ? course.thumbnail : ""
         };
       });
@@ -2735,6 +2735,40 @@ function AuthPage({ onNavigate, onLogin }: { onNavigate: (p: Page) => void; onLo
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [otp, setOtp] = useState("");
+  const [otpCountdown, setOtpCountdown] = useState(0);
+
+  useEffect(() => {
+    let timer: any;
+    if (otpCountdown > 0) {
+      timer = setTimeout(() => {
+        setOtpCountdown(prev => prev - 1);
+      }, 1000);
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [otpCountdown]);
+
+  const handleSendOtp = async () => {
+    if (!email) {
+      alert("Vui lòng nhập email trước khi gửi mã xác thực.");
+      return;
+    }
+    try {
+      await api.sendOtp(email);
+      alert("Đã gửi mã xác thực đến email của bạn.");
+      setOtpCountdown(60);
+    } catch (err: any) {
+      alert(err.message || "Không thể gửi mã xác thực.");
+    }
+  };
+
+  const toggleMode = () => {
+    setMode(prev => prev === "login" ? "register" : "login");
+    setOtp("");
+    setOtpCountdown(0);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -2742,7 +2776,7 @@ function AuthPage({ onNavigate, onLogin }: { onNavigate: (p: Page) => void; onLo
       if (mode === "login") {
         await api.login(email, password);
       } else {
-        await api.register(email, password, name, selectedRole);
+        await api.register(email, password, name, selectedRole, otp);
       }
       const profile = await api.getProfile();
       let matchedRole: Role = "student";
@@ -2806,7 +2840,7 @@ function AuthPage({ onNavigate, onLogin }: { onNavigate: (p: Page) => void; onLo
           <h1 className="text-3xl font-bold font-display mb-2">{mode === "login" ? "Sign in" : "Create account"}</h1>
           <p className="text-muted-foreground text-sm mb-8">
             {mode === "login" ? "New to CourShare? " : "Already have an account? "}
-            <button onClick={() => setMode(mode === "login" ? "register" : "login")} className="text-primary hover:underline font-medium">
+            <button onClick={toggleMode} className="text-primary hover:underline font-medium">
               {mode === "login" ? "Create account" : "Sign in"}
             </button>
           </p>
@@ -2847,7 +2881,19 @@ function AuthPage({ onNavigate, onLogin }: { onNavigate: (p: Page) => void; onLo
             )}
             <div>
               <label className="text-sm font-medium block mb-1.5">Email</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-3 py-2.5 text-sm bg-input-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" placeholder="your@email.com" required />
+              <div className="flex gap-2">
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="flex-1 px-3 py-2.5 text-sm bg-input-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" placeholder="your@email.com" required />
+                {mode === "register" && (
+                  <button
+                    type="button"
+                    onClick={handleSendOtp}
+                    disabled={otpCountdown > 0 || !email}
+                    className="px-4 py-2.5 bg-primary text-white font-medium text-sm rounded-xl hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground transition-all shrink-0 cursor-pointer disabled:cursor-not-allowed"
+                  >
+                    {otpCountdown > 0 ? `Gửi lại (${otpCountdown}s)` : "Gửi mã"}
+                  </button>
+                )}
+              </div>
             </div>
             <div>
               <div className="flex items-center justify-between mb-1.5">
@@ -2859,6 +2905,20 @@ function AuthPage({ onNavigate, onLogin }: { onNavigate: (p: Page) => void; onLo
                 <input type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full pl-9 pr-4 py-2.5 text-sm bg-input-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" placeholder="••••••••" required />
               </div>
             </div>
+            {mode === "register" && (
+              <div>
+                <label className="text-sm font-medium block mb-1.5">Mã xác thực (OTP Code)</label>
+                <input
+                  type="text"
+                  maxLength={6}
+                  value={otp}
+                  onChange={e => setOtp(e.target.value.replace(/\D/g, ''))}
+                  className="w-full px-3 py-2.5 text-sm bg-input-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all font-mono tracking-widest text-center text-lg font-semibold"
+                  placeholder="123456"
+                  required
+                />
+              </div>
+            )}
             {mode === "register" && (
               <div className="flex items-start gap-2.5">
                 <input type="checkbox" id="terms" className="mt-0.5 accent-primary" required />
